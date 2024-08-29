@@ -21,7 +21,7 @@ const getProductById = (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const producto = { ...req.body, imagen: req.file.path }; // req.file.path contiene la URL de la imagen en Cloudinary
+    const producto = { ...req.body, imagen: req.body.imagen };
     const newProduct = await service.addProduct(producto);
     res.status(201).json(newProduct);
   } catch (error) {
@@ -38,13 +38,7 @@ const putProduct = async (req, res) => {
       return res.status(404).json();
     }
 
-    const producto = { ...req.body };
-    if (req.file) {
-      producto.imagen = req.file.path;
-    } else {
-      producto.imagen = existingProduct.imagen; // Mantiene la imagen existente si no se proporciona una nueva
-    }
-
+    const producto = { ...req.body, imagen: req.body.imagen || existingProduct.imagen };
     const editedProduct = await service.putProduct(id, producto);
     if (editedProduct.modifiedCount > 0) {
       res.status(200).json(producto);
@@ -65,13 +59,7 @@ const patchProduct = async (req, res) => {
       return res.status(404).json();
     }
 
-    const producto = { ...req.body };
-    if (req.file) {
-      producto.imagen = req.file.path;
-    } else {
-      producto.imagen = existingProduct.imagen; // Mantiene la imagen existente si no se proporciona una nueva
-    }
-
+    const producto = { ...req.body, imagen: req.body.imagen || existingProduct.imagen };
     const editedProduct = await service.editProduct(id, producto);
     if (editedProduct.modifiedCount > 0) {
       res.status(200).json(producto);

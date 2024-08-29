@@ -1,35 +1,75 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import { v2 as cloudinary } from 'cloudinary';
+import streamifier from 'streamifier';
 import * as controllers from '../controllers/controller.api.products.js';
 import { validateProduct, validateProductPatch } from '../../middleware/product.validate.middleware.js';
 import { isAdmin } from '../../middleware/auth.role.middleware.js';
-import { v2 as cloudinary } from 'cloudinary';
 
 const route = Router();
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'productos', // Nombre de la carpeta en Cloudinary
-    allowedFormats: ['jpg', 'png', 'jpeg'],
-    public_id: (req, file) => `${Date.now()}-${file.originalname}`,
-  },
-});
+// Configurar Multer para usar almacenamiento en memoria
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-const upload = multer({ storage: storage });
+// Subir imagen a Cloudinary
+const uploadToCloudinary = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: 'productos', resource_type: 'image' },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+};
 
 route.get('/productos', controllers.getProducts);
 route.get('/productos/:id', controllers.getProductById);
 
-route.all('/productos/:id', function todos(req, res, next) {
-  console.log("Tengo un rol válido");
-  next();
-});
+route.post('/productos', [upload.single('imagen'), validateProduct, isAdmin], async (req, res, next) => {
+  try {
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      req.body.imagen = result.secure_url; // Guardamos la URL de la imagen en el body
+    }
+    next();
+  } catch (error) {
+    console.error('Error al subir imagen a Cloudinary:', error);
+    return res.status(500).json({ error: 'Error al subir imagen' });
+  }
+}, controllers.addProduct);
 
-route.post('/productos', [upload.single('imagen'), validateProduct, isAdmin], controllers.addProduct);
-route.put('/productos/:id', [upload.single('imagen'), validateProduct, isAdmin], controllers.putProduct);
-route.patch('/productos/:id', [upload.single('imagen'), validateProductPatch, isAdmin], controllers.patchProduct);
+route.put('/productos/:id', [upload.single('imagen'), validateProduct, isAdmin], async (req, res, next) => {
+  try {
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      req.body.imagen = result.secure_url; // Guardamos la URL de la imagen en el body
+    }
+    next();
+  } catch (error) {
+    console.error('Error al subir imagen a Cloudinary:', error);
+    return res.status(500).json({ error: 'Error al subir imagen' });
+  }
+}, controllers.putProduct);
+
+route.patch('/productos/:id', [upload.single('imagen'), validateProductPatch, isAdmin], async (req, res, next) => {
+  try {
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      req.body.imagen = result.secure_url; // Guardamos la URL de la imagen en el body
+    }
+    next();
+  } catch (error) {
+    console.error('Error al subir imagen a Cloudinary:', error);
+    return res.status(500).json({ error: 'Error al subir imagen' });
+  }
+}, controllers.patchProduct);
+
 route.delete('/productos/:id', isAdmin, controllers.deleteProduct);
 
 export default route;
