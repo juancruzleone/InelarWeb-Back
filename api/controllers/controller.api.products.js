@@ -1,4 +1,3 @@
-// controller.api.products.js
 import * as service from "../../services/products.services.js";
 
 const getProducts = (req, res) => {
@@ -22,7 +21,7 @@ const getProductById = (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const producto = { ...req.body, imagen: `/${req.file.filename}` };
+    const producto = { ...req.body, imagen: req.file.path }; // req.file.path contiene la URL de la imagen en Cloudinary
     const newProduct = await service.addProduct(producto);
     res.status(201).json(newProduct);
   } catch (error) {
@@ -41,7 +40,7 @@ const putProduct = async (req, res) => {
 
     const producto = { ...req.body };
     if (req.file) {
-      producto.imagen = `/${req.file.filename}`;
+      producto.imagen = req.file.path;
     } else {
       producto.imagen = existingProduct.imagen; // Mantiene la imagen existente si no se proporciona una nueva
     }
@@ -68,7 +67,7 @@ const patchProduct = async (req, res) => {
 
     const producto = { ...req.body };
     if (req.file) {
-      producto.imagen = `/${req.file.filename}`;
+      producto.imagen = req.file.path;
     } else {
       producto.imagen = existingProduct.imagen; // Mantiene la imagen existente si no se proporciona una nueva
     }
