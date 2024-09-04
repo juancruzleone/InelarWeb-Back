@@ -9,7 +9,7 @@ async function insertService(service) {
       case 'mantenimiento':
         schema = maintenanceSchema;
         break;
-      case 'tecnico':
+      case 'técnico':
         schema = technicalServiceSchema;
         break;
       case 'instalaciones':
