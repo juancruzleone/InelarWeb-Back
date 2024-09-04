@@ -13,7 +13,7 @@ const validateService = async (req, res, next) => {
 
     await commonSchema.validate(req.body, { abortEarly: false });
 
-    const categorySchema = yup.string().oneOf(['mantenimiento', 'tecnico', 'instalaciones', 'provisiones']).required();
+    const categorySchema = yup.string().oneOf(['mantenimiento', 'técnico', 'instalaciones', 'provisiones']).required();
     await categorySchema.validate(req.body.category);
 
     if (req.body.category === 'provisiones') {
