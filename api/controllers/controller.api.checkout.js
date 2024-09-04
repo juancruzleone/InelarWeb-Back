@@ -1,9 +1,5 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { MongoClient } from 'mongodb';
-
-const client = new MongoClient('mongodb+srv://juan:juan123@proyectoinelar.2eadspu.mongodb.net/');
-await client.connect();  
-const db = client.db("inelar");
+import { db } from '../../db.js';
 
 const createOrder = async (req, res) => {
     try {
@@ -13,7 +9,7 @@ const createOrder = async (req, res) => {
             return res.status(400).json({ error: 'Ya se ha aprobado una orden.' });
         }
 
-        const mercadoPago = new MercadoPagoConfig({ accessToken: "APP_USR-4052031476279541-061615-b619da07aaa484257152a2fe9b485ce3-1861901310" });
+        const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
 
         const items = carrito.map(producto => ({
