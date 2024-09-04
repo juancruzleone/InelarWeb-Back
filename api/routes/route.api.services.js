@@ -16,7 +16,6 @@ route.post('/servicios', async (req, res) => {
   }
 });
 
-
 route.get('/servicios', async (req, res) => {
   try {
     const servicios = await controllers.getServices();

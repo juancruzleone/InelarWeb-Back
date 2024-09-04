@@ -15,20 +15,20 @@ dotenv.config();
 
 const app = express();
 
-// Configuración de Cloudinary usando variables de entorno
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Middleware
+
 app.use(express.urlencoded({ extended: true }));
 app.use("/", express.static("public"));
 app.use(express.json());
 app.use(cors());
 
-// Rutas de la API
+
 app.use('/api', ApiProductsRoutes);
 app.use('/api', ApiClientsRoutes);
 app.use("/api", ApiContactRoutes);

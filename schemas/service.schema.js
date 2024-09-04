@@ -6,13 +6,12 @@ const commonFields = {
   telefono: yup.string().required("El teléfono es obligatorio"),
   direccion: yup.string().required("La dirección es obligatoria"),
   fecha: yup.date().required("La fecha es obligatoria"),
-  cantidad: yup.number().positive("La cantidad debe ser mayor que cero").required("La cantidad es obligatoria"),
 };
 
 const maintenanceSchema = yup.object().shape({
   ...commonFields,
   dispositivo: yup.string().required("Selecciona un dispositivo"),
-
+  cantidad: yup.number().positive("La cantidad debe ser mayor que cero").required("La cantidad es obligatoria"),
 });
 
 const technicalServiceSchema = yup.object().shape({
@@ -29,6 +28,7 @@ const installationSchema = yup.object().shape({
 const provisionsSchema = yup.object().shape({
   ...commonFields,
   dispositivo: yup.string().required("Selecciona un dispositivo"),
+  cantidad: yup.number().positive("La cantidad debe ser mayor que cero").required("La cantidad es obligatoria"),
 });
 
 export { maintenanceSchema, technicalServiceSchema, installationSchema, provisionsSchema };

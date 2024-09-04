@@ -22,15 +22,13 @@ async function insertService(service) {
         throw new Error("Categoría de servicio no válida");
     }
 
-
     await schema.validate(service);
-
 
     await db.collection("servicios").insertOne({ ...service, category: service.category });
     console.log("Servicio guardado en la base de datos");
   } catch (error) {
     console.error("Error al insertar el servicio en la base de datos:", error);
-    throw error; 
+    throw error;
   }
 }
 
@@ -40,7 +38,7 @@ async function getServices() {
     return servicios;
   } catch (error) {
     console.error("Error al obtener la lista de servicios:", error);
-    throw error; 
+    throw error;
   }
 }
 
