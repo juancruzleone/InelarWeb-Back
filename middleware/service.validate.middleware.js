@@ -8,7 +8,7 @@ const validateService = async (req, res, next) => {
       case 'mantenimiento':
         schema = maintenanceSchema;
         break;
-      case 'técnico':
+      case 'servicio técnico':
         schema = technicalServiceSchema;
         break;
       case 'instalaciones':
