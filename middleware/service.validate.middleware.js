@@ -23,6 +23,14 @@ const validateService = async (req, res, next) => {
 
     await schema.validate(req.body, { abortEarly: false });
 
+
+    const currentDate = new Date();
+    const selectedDate = new Date(req.body.fecha);
+
+    if (selectedDate <= currentDate) {
+      return res.status(400).json({ error: "La fecha debe ser posterior a la fecha actual" });
+    }
+
     next();
   } catch (error) {
     return res.status(400).json({ error: error.message });

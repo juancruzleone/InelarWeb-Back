@@ -5,7 +5,10 @@ const commonFields = {
   email: yup.string().email("Introduce un email válido").required("El email es obligatorio"),
   telefono: yup.string().required("El teléfono es obligatorio"),
   direccion: yup.string().required("La dirección es obligatoria"),
-  fecha: yup.date().required("La fecha es obligatoria"),
+  fecha: yup.date().required("La fecha es obligatoria").test('is-future-date', 'La fecha debe ser posterior a la fecha actual', function(value) {
+    const today = new Date();
+    return value > today;
+  }),
 };
 
 const maintenanceSchema = yup.object().shape({
