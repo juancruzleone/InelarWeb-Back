@@ -1,3 +1,4 @@
+import { validateToken as tokenServiceValidateToken } from '../services/token.service.js';
 import * as accountSchema from '../schemas/auth.schema.js';
 
 async function validateAccount(req, res, next) {
@@ -11,6 +12,24 @@ async function validateAccount(req, res, next) {
     }
 }
 
+async function validateToken(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ error: { message: 'Authorization header missing' } });
+    }
 
+    const token = authHeader.split(' ')[1];
+    try {
+        const user = await tokenServiceValidateToken(token);
+        if (!user) {
+            return res.status(401).json({ error: { message: 'Invalid or expired token' } });
+        }
 
-export { validateAccount };
+        req.user = user;
+        next();
+    } catch (err) {
+        res.status(500).json({ error: { message: 'Server error' } });
+    }
+}
+
+export { validateAccount, validateToken };

@@ -6,6 +6,7 @@ import ApiServicesRoutes from '../api/routes/route.api.services.js';
 import ApiCheckoutRoutes from '../api/routes/route.api.checkout.js';
 import ApiOrdersRoutes from '../api/routes/route.api.order.js';
 import ApiProfileRoutes from '../api/routes/route.api.profile.js';
+import ApiInstallationsRoutes from '../api/routes/route.api.installations.js'
 import ApiAuthRoutes from '../api/routes/route.api.auth.js';
 import cors from 'cors';
 import { v2 as cloudinary } from 'cloudinary';
@@ -36,6 +37,7 @@ app.use("/api", ApiServicesRoutes);
 app.use("/api", ApiCheckoutRoutes);
 app.use('/api', ApiOrdersRoutes);
 app.use('/api', ApiProfileRoutes);
+app.use('/api', ApiInstallationsRoutes);
 app.use('/api', ApiAuthRoutes);
 
 app.listen(2023, () => {

@@ -8,11 +8,11 @@ import { isAdmin } from '../../middleware/auth.role.middleware.js';
 
 const route = Router();
 
-// Configurar Multer para usar almacenamiento en memoria
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Subir imagen a Cloudinary
+
 const uploadToCloudinary = (buffer) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -35,7 +35,7 @@ route.post('/productos', [upload.single('imagen'), validateProduct, isAdmin], as
   try {
     if (req.file) {
       const result = await uploadToCloudinary(req.file.buffer);
-      req.body.imagen = result.secure_url; // Guardamos la URL de la imagen en el body
+      req.body.imagen = result.secure_url; 
     }
     next();
   } catch (error) {
@@ -48,7 +48,7 @@ route.put('/productos/:id', [upload.single('imagen'), validateProduct, isAdmin],
   try {
     if (req.file) {
       const result = await uploadToCloudinary(req.file.buffer);
-      req.body.imagen = result.secure_url; // Guardamos la URL de la imagen en el body
+      req.body.imagen = result.secure_url; 
     }
     next();
   } catch (error) {
@@ -61,7 +61,7 @@ route.patch('/productos/:id', [upload.single('imagen'), validateProductPatch, is
   try {
     if (req.file) {
       const result = await uploadToCloudinary(req.file.buffer);
-      req.body.imagen = result.secure_url; // Guardamos la URL de la imagen en el body
+      req.body.imagen = result.secure_url; 
     }
     next();
   } catch (error) {
