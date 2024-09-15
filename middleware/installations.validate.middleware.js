@@ -1,6 +1,6 @@
 import installationSchema from '../schemas/installations.schema.js';
 
-async function validateBuilding(req, res, next) {
+async function validateInstallations(req, res, next) {
   try {
     await installationSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
     next();
@@ -10,4 +10,4 @@ async function validateBuilding(req, res, next) {
   }
 }
 
-export { validateBuilding };
+export { validateInstallations };

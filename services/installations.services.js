@@ -2,6 +2,12 @@ import { db } from '../db.js';
 import { ObjectId } from 'mongodb';
 
 const installationsCollection = db.collection('instalaciones');
+const devicesCollection = db.collection('dispositivos');
+
+async function getInstallations() {
+  const installations = await installationsCollection.find().toArray();
+  return installations;
+}
 
 async function createInstallation(installationData) {
   const { company, address, floorSector, postalCode, city, province, installationType } = installationData;
@@ -13,7 +19,8 @@ async function createInstallation(installationData) {
     postalCode,
     city,
     province,
-    installationType
+    installationType,
+    devices: [] // Inicialmente, sin dispositivos
   };
 
   const result = await installationsCollection.insertOne(newInstallation);
@@ -37,4 +44,18 @@ async function deleteInstallation(id) {
   if (result.deletedCount === 0) throw new Error('La instalación no existe');
 }
 
-export { createInstallation, updateInstallation, deleteInstallation };
+async function addDeviceToInstallation(installationId, deviceId) {
+  const device = await devicesCollection.findOne({ _id: new ObjectId(deviceId) });
+  if (!device) throw new Error('El dispositivo no existe');
+
+  const result = await installationsCollection.findOneAndUpdate(
+    { _id: new ObjectId(installationId) },
+    { $push: { devices: device._id } },
+    { returnDocument: 'after' }
+  );
+
+  if (!result.value) throw new Error('La instalación no existe');
+  return result.value;
+}
+
+export { getInstallations, createInstallation, updateInstallation, deleteInstallation, addDeviceToInstallation };
