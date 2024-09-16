@@ -3,7 +3,7 @@ import * as services from '../../services/installations.services.js';
 async function getInstallations(req, res) {
   try {
     const installations = await services.getInstallations();
-    res.status(200).json({ installations });
+    res.status(200).json(installations);
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }
