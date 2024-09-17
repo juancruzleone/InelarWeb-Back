@@ -26,7 +26,13 @@ async function login(cuenta) {
     return { ...existe, password: undefined };
 }
 
+// Nueva función para obtener todas las cuentas
+async function getAllAccounts() {
+    return cuentaCollection.find({}).toArray(); // Retorna todas las cuentas
+}
+
 export {
     createAccount,
-    login
+    login,
+    getAllAccounts // Exportar nueva función
 };

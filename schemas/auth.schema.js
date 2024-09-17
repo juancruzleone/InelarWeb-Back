@@ -1,6 +1,6 @@
 import * as yup from 'yup';
 
-const cuenta = yup.object({
+const cuentaRegistro = yup.object({
     userName: yup.string()
         .trim()
         .required('El nombre de usuario es obligatorio')
@@ -13,4 +13,12 @@ const cuenta = yup.object({
         .min(6, 'La contraseña debe tener al menos 6 caracteres')
 });
 
-export { cuenta };
+const cuentaLogin = yup.object({
+    userName: yup.string()
+        .trim()
+        .required('El nombre de usuario es obligatorio'),
+    password: yup.string()
+        .required('La contraseña es obligatoria')
+});
+
+export { cuentaRegistro, cuentaLogin };

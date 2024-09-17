@@ -1,9 +1,20 @@
 import { validateToken as tokenServiceValidateToken } from '../services/token.service.js';
 import * as accountSchema from '../schemas/auth.schema.js';
 
-async function validateAccount(req, res, next) {
+async function validateAccountRegistro(req, res, next) {
     try {
-        const cuenta = await accountSchema.cuenta.validate(req.body, { abortEarly: false, stripUnknown: true });
+        const cuenta = await accountSchema.cuentaRegistro.validate(req.body, { abortEarly: false, stripUnknown: true });
+        req.body = cuenta;
+        next();
+    } catch (err) {
+        const errorMessages = err.inner.map(e => e.message);
+        res.status(400).json({ error: { message: 'Validation error', details: errorMessages } });
+    }
+}
+
+async function validateAccountLogin(req, res, next) {
+    try {
+        const cuenta = await accountSchema.cuentaLogin.validate(req.body, { abortEarly: false, stripUnknown: true });
         req.body = cuenta;
         next();
     } catch (err) {
@@ -32,4 +43,4 @@ async function validateToken(req, res, next) {
     }
 }
 
-export { validateAccount, validateToken };
+export { validateAccountRegistro, validateAccountLogin, validateToken };
