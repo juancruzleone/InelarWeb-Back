@@ -33,7 +33,7 @@ async function logout(req, res) {
     });
 }
 
-// Nueva función para obtener todas las cuentas
+
 async function getAllAccounts(req, res) {
   return services
     .getAllAccounts()
