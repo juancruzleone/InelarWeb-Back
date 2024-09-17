@@ -7,6 +7,9 @@ async function createAccount(cuenta) {
     const existe = await cuentaCollection.findOne({ userName: cuenta.userName });
     if (existe) throw new Error("cuenta ya existe");
 
+    const existeEmail = await cuentaCollection.findOne({ email: cuenta.email });
+    if (existeEmail) throw new Error("El correo ya está registrado");
+
     const nuevaCuenta = { ...cuenta };
     nuevaCuenta.password = await bcrypt.hash(cuenta.password, 10);
 
