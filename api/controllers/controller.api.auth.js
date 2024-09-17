@@ -33,12 +33,4 @@ async function logout(req, res) {
     });
 }
 
-
-async function getAllAccounts(req, res) {
-  return services
-    .getAllAccounts()
-    .then((cuentas) => res.status(200).json(cuentas))
-    .catch((err) => res.status(400).json({ error: { message: err.message } }));
-}
-
-export { createAccount, login, logout, getAllAccounts };
+export { createAccount, login, logout };
