@@ -1,3 +1,5 @@
+// schemas/installations.schema.js
+
 import * as Yup from 'yup';
 
 const installationSchema = Yup.object().shape({
@@ -30,4 +32,18 @@ const installationSchema = Yup.object().shape({
     .max(100, 'El tipo de instalación no puede tener más de 100 caracteres')
 });
 
-export default installationSchema;
+const deviceSchema = Yup.object().shape({
+  nombre: Yup.string()
+    .required('El nombre del dispositivo es un campo requerido')
+    .min(1, 'El nombre debe tener al menos 1 carácter')
+    .max(100, 'El nombre no puede tener más de 100 caracteres'),
+  ubicacion: Yup.string()
+    .required('La ubicación del dispositivo es un campo requerido')
+    .min(1, 'La ubicación debe tener al menos 1 carácter')
+    .max(255, 'La ubicación no puede tener más de 255 caracteres'),
+  estado: Yup.string()
+    .required('El estado del dispositivo es un campo requerido')
+    .oneOf(['si', 'no'], 'El estado debe ser "si" o "no"')
+});
+
+export { installationSchema, deviceSchema };
