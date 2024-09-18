@@ -1,5 +1,3 @@
-// services/installations.services.js
-
 import { db } from '../db.js';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
@@ -108,7 +106,7 @@ async function updateDeviceInInstallation(installationId, deviceId, deviceData) 
   );
 
   if (!result.value) {
-    throw new Error('No se pudo encontrar la instalación o el dispositivo para actualizar');
+    throw new Error('No se encontró el dispositivo en la instalación');
   }
 }
 
@@ -122,17 +120,33 @@ async function deleteDeviceFromInstallation(installationId, deviceId) {
 
   await installationsCollection.findOneAndUpdate(
     { _id: installationObjectId },
-    { $pull: { devices: { _id: deviceObjectId } } },
-    { returnDocument: 'after' }
+    { $pull: { devices: { _id: deviceObjectId } } }
   );
+
+  await devicesCollection.deleteOne({ _id: deviceObjectId });
 }
 
-export {
-  getInstallations,
-  createInstallation,
-  updateInstallation,
-  deleteInstallation,
-  addDeviceToInstallation,
-  updateDeviceInInstallation,
-  deleteDeviceFromInstallation
+async function getDevicesFromInstallation(installationId) {
+  if (!ObjectId.isValid(installationId)) {
+    throw new Error('El ID de la instalación no es válido');
+  }
+
+  const installationObjectId = new ObjectId(installationId);
+  const installation = await installationsCollection.findOne({ _id: installationObjectId });
+  if (!installation) {
+    throw new Error('La instalación no existe');
+  }
+
+  return installation.devices;
+}
+
+export { 
+  getInstallations, 
+  createInstallation, 
+  updateInstallation, 
+  deleteInstallation, 
+  addDeviceToInstallation, 
+  updateDeviceInInstallation, 
+  deleteDeviceFromInstallation, 
+  getDevicesFromInstallation 
 };

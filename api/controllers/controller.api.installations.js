@@ -1,5 +1,3 @@
-// controllers/controller.api.installations.js
-
 import * as services from '../../services/installations.services.js';
 import { ObjectId } from 'mongodb';
 
@@ -116,6 +114,21 @@ async function deleteDeviceFromInstallation(req, res) {
   }
 }
 
+async function getDevicesFromInstallation(req, res) {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: { message: 'ID de instalación no válido' } });
+    }
+
+    const devices = await services.getDevicesFromInstallation(id);
+    res.status(200).json(devices);
+  } catch (err) {
+    res.status(400).json({ error: { message: err.message } });
+  }
+}
+
 export { 
   getInstallations, 
   createInstallation, 
@@ -123,5 +136,6 @@ export {
   deleteInstallation, 
   addDeviceToInstallation, 
   updateDeviceInInstallation, 
-  deleteDeviceFromInstallation 
+  deleteDeviceFromInstallation,
+  getDevicesFromInstallation // Nueva función exportada
 };
