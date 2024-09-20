@@ -1,35 +1,25 @@
-// schemas/installations.schema.js
-
 import * as Yup from 'yup';
 
 const installationSchema = Yup.object().shape({
   company: Yup.string()
-    .required('La empresa es un campo requerido')
-    .min(1, 'La empresa debe tener al menos 1 carácter')
-    .max(255, 'La empresa no puede tener más de 255 caracteres'),
+    .required('La compañía es un campo requerido')
+    .max(100, 'El nombre de la compañía no puede tener más de 100 caracteres'),
   address: Yup.string()
     .required('La dirección es un campo requerido')
-    .min(1, 'La dirección debe tener al menos 1 carácter')
     .max(255, 'La dirección no puede tener más de 255 caracteres'),
   floorSector: Yup.string()
-    .required('El piso/sector es un campo requerido')
-    .min(1, 'El piso/sector debe tener al menos 1 carácter')
-    .max(100, 'El piso/sector no puede tener más de 100 caracteres'),
+    .max(100, 'El sector o piso no puede tener más de 100 caracteres'),
   postalCode: Yup.string()
-    .required('El código postal es un campo requerido')
-    .matches(/^\d{4,6}$/, 'El código postal debe tener entre 4 y 6 dígitos'),
+    .max(10, 'El código postal no puede tener más de 10 caracteres'),
   city: Yup.string()
     .required('La ciudad es un campo requerido')
-    .min(1, 'La ciudad debe tener al menos 1 carácter')
     .max(100, 'La ciudad no puede tener más de 100 caracteres'),
   province: Yup.string()
     .required('La provincia es un campo requerido')
-    .min(1, 'La provincia debe tener al menos 1 carácter')
     .max(100, 'La provincia no puede tener más de 100 caracteres'),
   installationType: Yup.string()
     .required('El tipo de instalación es un campo requerido')
-    .min(1, 'El tipo de instalación debe tener al menos 1 carácter')
-    .max(100, 'El tipo de instalación no puede tener más de 100 caracteres')
+    .oneOf(['residencial', 'comercial', 'industrial'], 'El tipo de instalación debe ser "residencial", "comercial" o "industrial"')
 });
 
 const deviceSchema = Yup.object().shape({
@@ -41,9 +31,9 @@ const deviceSchema = Yup.object().shape({
     .required('La ubicación del dispositivo es un campo requerido')
     .min(1, 'La ubicación debe tener al menos 1 carácter')
     .max(255, 'La ubicación no puede tener más de 255 caracteres'),
-  estado: Yup.string()
-    .required('El estado del dispositivo es un campo requerido')
-    .oneOf(['si', 'no'], 'El estado debe ser "si" o "no"')
+  categoria: Yup.string()
+    .required('La categoría del dispositivo es un campo requerido')
+    .oneOf(['sensor', 'actuador', 'controlador'], 'La categoría debe ser "sensor", "actuador" o "controlador"')
 });
 
 export { installationSchema, deviceSchema };

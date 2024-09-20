@@ -70,13 +70,13 @@ async function deleteInstallation(req, res) {
 async function addDeviceToInstallation(req, res) {
   try {
     const { id } = req.params;
-    const { nombre, ubicacion, estado } = req.body;
+    const { nombre, ubicacion, categoria } = req.body;
 
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ error: { message: 'ID de instalación no válido' } });
     }
 
-    await services.addDeviceToInstallation(id, { nombre, ubicacion, estado });
+    await services.addDeviceToInstallation(id, { nombre, ubicacion, categoria });
     res.status(200).json({ message: 'Dispositivo agregado a la instalación exitosamente' });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
@@ -86,13 +86,13 @@ async function addDeviceToInstallation(req, res) {
 async function updateDeviceInInstallation(req, res) {
   try {
     const { id, deviceId } = req.params;
-    const { nombre, ubicacion, estado } = req.body;
+    const { nombre, ubicacion, categoria } = req.body;
 
     if (!ObjectId.isValid(id) || !ObjectId.isValid(deviceId)) {
       return res.status(400).json({ error: { message: 'ID de instalación o dispositivo no válido' } });
     }
 
-    await services.updateDeviceInInstallation(id, deviceId, { nombre, ubicacion, estado });
+    await services.updateDeviceInInstallation(id, deviceId, { nombre, ubicacion, categoria });
     res.status(200).json({ message: 'Dispositivo actualizado correctamente' });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
@@ -137,5 +137,5 @@ export {
   addDeviceToInstallation, 
   updateDeviceInInstallation, 
   deleteDeviceFromInstallation,
-  getDevicesFromInstallation // Nueva función exportada
+  getDevicesFromInstallation 
 };

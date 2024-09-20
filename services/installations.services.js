@@ -54,7 +54,7 @@ async function deleteInstallation(id) {
 }
 
 async function addDeviceToInstallation(installationId, deviceData) {
-  const { nombre, ubicacion, estado } = deviceData;
+  const { nombre, ubicacion, categoria } = deviceData;
 
   if (!ObjectId.isValid(installationId)) {
     throw new Error('El ID de la instalación no es válido');
@@ -69,7 +69,7 @@ async function addDeviceToInstallation(installationId, deviceData) {
   const newDevice = {
     nombre,
     ubicacion,
-    estado,
+    categoria,  
     codigoQR: uuidv4(),
     _id: new ObjectId() 
   };
@@ -84,7 +84,7 @@ async function addDeviceToInstallation(installationId, deviceData) {
 }
 
 async function updateDeviceInInstallation(installationId, deviceId, deviceData) {
-  const { nombre, ubicacion, estado } = deviceData;
+  const { nombre, ubicacion, categoria } = deviceData;
 
   if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
     throw new Error('El ID de la instalación o dispositivo no es válido');
@@ -99,7 +99,7 @@ async function updateDeviceInInstallation(installationId, deviceId, deviceData) 
       $set: { 
         'devices.$.nombre': nombre, 
         'devices.$.ubicacion': ubicacion, 
-        'devices.$.estado': estado 
+        'devices.$.categoria': categoria  
       } 
     },
     { returnDocument: 'after' }
@@ -133,11 +133,12 @@ async function getDevicesFromInstallation(installationId) {
 
   const installationObjectId = new ObjectId(installationId);
   const installation = await installationsCollection.findOne({ _id: installationObjectId });
+
   if (!installation) {
     throw new Error('La instalación no existe');
   }
 
-  return installation.devices;
+  return installation.devices || [];
 }
 
 export { 
@@ -147,6 +148,6 @@ export {
   deleteInstallation, 
   addDeviceToInstallation, 
   updateDeviceInInstallation, 
-  deleteDeviceFromInstallation, 
+  deleteDeviceFromInstallation,
   getDevicesFromInstallation 
 };
