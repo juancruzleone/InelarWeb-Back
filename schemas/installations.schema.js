@@ -19,7 +19,7 @@ const installationSchema = Yup.object().shape({
     .max(100, 'La provincia no puede tener más de 100 caracteres'),
   installationType: Yup.string()
     .required('El tipo de instalación es un campo requerido')
-    .oneOf(['detección de incendio', 'Extinción con gas', 'Extinción con agua'], 'El tipo de instalación debe ser "detección de incendio", "Extinción con gas" o "Extinción con agua"')
+    .oneOf(['Detección de incendio', 'Extinción con gas', 'Extinción con agua'], 'El tipo de instalación debe ser "Detección de incendio", "Extinción con gas" o "Extinción con agua"')
 });
 
 const deviceSchema = Yup.object().shape({
