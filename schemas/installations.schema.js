@@ -33,7 +33,7 @@ const deviceSchema = Yup.object().shape({
     .max(255, 'La ubicación no puede tener más de 255 caracteres'),
   categoria: Yup.string()
     .required('La categoría del dispositivo es un campo requerido')
-    .oneOf(['sensor', 'actuador', 'controlador'], 'La categoría debe ser "sensor", "actuador" o "controlador"')
+    .oneOf(['bomba', 'hidrante'], 'La categoría debe ser "bomba", "hidrante"')
 });
 
 export { installationSchema, deviceSchema };
