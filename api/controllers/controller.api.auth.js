@@ -33,7 +33,6 @@ async function logout(req, res) {
     });
 }
 
-
 async function getAllAccounts(req, res) {
   return services
     .getAllAccounts()
@@ -41,4 +40,17 @@ async function getAllAccounts(req, res) {
     .catch((err) => res.status(400).json({ error: { message: err.message } }));
 }
 
-export { createAccount, login, logout, getAllAccounts };
+async function getAccountById(req, res) {
+  const { id } = req.params;
+  return services
+    .getAccountById(id)
+    .then((cuenta) => {
+      if (!cuenta) {
+        return res.status(404).json({ error: { message: "Usuario no encontrado" } });
+      }
+      res.status(200).json(cuenta);
+    })
+    .catch((err) => res.status(400).json({ error: { message: err.message } }));
+}
+
+export { createAccount, login, logout, getAllAccounts, getAccountById };

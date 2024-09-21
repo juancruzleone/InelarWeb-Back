@@ -1,5 +1,6 @@
 import { db } from '../db.js';
 import bcrypt from 'bcrypt';
+import { ObjectId } from 'mongodb';
 
 const cuentaCollection = db.collection("cuentas");
 
@@ -26,13 +27,26 @@ async function login(cuenta) {
     return { ...existe, password: undefined };
 }
 
-
 async function getAllAccounts() {
     return cuentaCollection.find({}).toArray(); 
+}
+
+async function getAccountById(id) {
+    try {
+        const cuenta = await cuentaCollection.findOne({ _id: new ObjectId(id) });
+        if (cuenta) {
+            return { ...cuenta, password: undefined };
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching account by ID:", error);
+        throw error;
+    }
 }
 
 export {
     createAccount,
     login,
-    getAllAccounts 
+    getAllAccounts,
+    getAccountById
 };

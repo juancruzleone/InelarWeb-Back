@@ -6,6 +6,7 @@ const route = Router();
 route.post('/cuenta', [validateAccountRegistro], controllers.createAccount);
 route.post('/cuenta/login', [validateAccountLogin], controllers.login);
 route.delete('/cuenta', controllers.logout);
-route.get('/cuentas', controllers.getAllAccounts);  
+route.get('/cuentas', controllers.getAllAccounts);
+route.get('/cuentas/:id', controllers.getAccountById);  
 
 export default route;
