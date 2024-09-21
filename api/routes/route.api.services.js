@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as controllers from '../controllers/controller.api.services.js';
 import { validateService } from '../../middleware/service.validate.middleware.js';
+import { isAdmin } from '../../middleware/auth.role.middleware.js';  
 
 const route = Router();
 
@@ -16,7 +17,8 @@ route.post('/servicios', async (req, res) => {
   }
 });
 
-route.get('/servicios', async (req, res) => {
+
+route.get('/servicios', [isAdmin], async (req, res) => {
   try {
     const servicios = await controllers.getServices();
     res.status(200).json(servicios);

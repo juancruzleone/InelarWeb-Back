@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as controllers from '../controllers/controller.api.contact.js';
 import { validateContact } from '../../middleware/contact.validate.middleware.js';
+import { isAdmin } from '../../middleware/auth.role.middleware.js';  
 
 const route = Router();
 
@@ -17,7 +18,7 @@ route.post('/contactos', async (req, res) => {
 });
 
 
-route.get('/contactos', async (req, res) => {
+route.get('/contactos', [isAdmin], async (req, res) => {
   try {
     const contactos = await controllers.getContacts();
     res.status(200).json(contactos);

@@ -5,11 +5,11 @@ import { isAdmin } from '../../middleware/auth.role.middleware.js';
 
 const route = Router();
 
-route.get('/clientes', controllers.getClients); 
-route.get('/clientes/:id', controllers.getClientById);
-route.post('/clientes', isAdmin ,[validateClient], controllers.addClient);
-route.put('/clientes/:id', isAdmin , [validateClient], controllers.putClient);
-route.patch('/clientes/:id', isAdmin , [validateClientPatch], controllers.patchClient);
-route.delete('/clientes/:id', isAdmin ,controllers.deleteClient);
+route.get('/clientes', [isAdmin], controllers.getClients); 
+route.get('/clientes/:id', [isAdmin] ,controllers.getClientById);
+route.post('/clientes',[validateClient, isAdmin], controllers.addClient);
+route.put('/clientes/:id', [validateClient, isAdmin], controllers.putClient);
+route.patch('/clientes/:id', [validateClientPatch, isAdmin], controllers.patchClient);
+route.delete('/clientes/:id', [isAdmin] ,controllers.deleteClient);
 
 export default route;
