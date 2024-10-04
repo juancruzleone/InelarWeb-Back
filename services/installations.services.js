@@ -68,13 +68,13 @@ async function addDeviceToInstallation(installationId, deviceData) {
 
   const deviceId = new ObjectId();
   
-  let formUrl;
+  let codigoQR;
   try {
     // Crear el formulario en Google Apps Script
-    formUrl = await createForm(categoria, deviceId.toString());
+    codigoQR = await createForm(categoria, deviceId.toString());
   } catch (error) {
     console.error('Error al crear el formulario:', error);
-    formUrl = null; // O podrías usar una URL predeterminada
+    codigoQR = null; // O podrías usar una URL predeterminada
   }
 
   const newDevice = {
@@ -82,7 +82,7 @@ async function addDeviceToInstallation(installationId, deviceData) {
     nombre,
     ubicacion,
     categoria,  
-    formUrl
+    codigoQR
   };
 
   await devicesCollection.insertOne(newDevice);
