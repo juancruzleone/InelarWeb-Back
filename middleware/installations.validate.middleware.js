@@ -1,5 +1,3 @@
-// middleware/installations.validate.middleware.js
-
 import { installationSchema, deviceSchema } from '../schemas/installations.schema.js';
 
 async function validateInstallations(req, res, next) {

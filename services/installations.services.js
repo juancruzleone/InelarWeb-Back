@@ -1,6 +1,6 @@
 import { db } from '../db.js';
 import { ObjectId } from 'mongodb';
-import { v4 as uuidv4 } from 'uuid';
+import { createForm } from './googleAppsScript.service.js';
 
 const installationsCollection = db.collection('instalaciones');
 const devicesCollection = db.collection('dispositivos');
@@ -66,12 +66,23 @@ async function addDeviceToInstallation(installationId, deviceData) {
     throw new Error('La instalación no existe');
   }
 
+  const deviceId = new ObjectId();
+  
+  let formUrl;
+  try {
+    // Crear el formulario en Google Apps Script
+    formUrl = await createForm(categoria, deviceId.toString());
+  } catch (error) {
+    console.error('Error al crear el formulario:', error);
+    formUrl = null; // O podrías usar una URL predeterminada
+  }
+
   const newDevice = {
+    _id: deviceId,
     nombre,
     ubicacion,
     categoria,  
-    codigoQR: uuidv4(),
-    _id: new ObjectId() 
+    formUrl
   };
 
   await devicesCollection.insertOne(newDevice);
@@ -81,6 +92,8 @@ async function addDeviceToInstallation(installationId, deviceData) {
     { $push: { devices: newDevice } },
     { returnDocument: 'after' }
   );
+
+  return newDevice;
 }
 
 async function updateDeviceInInstallation(installationId, deviceId, deviceData) {

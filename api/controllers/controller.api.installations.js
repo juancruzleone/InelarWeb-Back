@@ -13,7 +13,7 @@ async function getInstallations(req, res) {
 async function createInstallation(req, res) {
   try {
     const { company, address, floorSector, postalCode, city, province, installationType } = req.body;
-    await services.createInstallation({
+    const newInstallation = await services.createInstallation({
       company,
       address,
       floorSector,
@@ -22,7 +22,7 @@ async function createInstallation(req, res) {
       province,
       installationType
     });
-    res.status(201).json({ message: 'Instalación creada correctamente' });
+    res.status(201).json({ message: 'Instalación creada correctamente', installation: newInstallation });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }
@@ -76,8 +76,11 @@ async function addDeviceToInstallation(req, res) {
       return res.status(400).json({ error: { message: 'ID de instalación no válido' } });
     }
 
-    await services.addDeviceToInstallation(id, { nombre, ubicacion, categoria });
-    res.status(200).json({ message: 'Dispositivo agregado a la instalación exitosamente' });
+    const newDevice = await services.addDeviceToInstallation(id, { nombre, ubicacion, categoria });
+    res.status(200).json({ 
+      message: 'Dispositivo agregado a la instalación exitosamente',
+      device: newDevice
+    });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }
