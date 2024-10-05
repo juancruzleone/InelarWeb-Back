@@ -20,9 +20,20 @@ async function createInstallation(req, res) {
       postalCode,
       city,
       province,
-      installationType
+      installationType,
     });
-    res.status(201).json({ message: 'Instalación creada correctamente', installation: newInstallation });
+    
+    if (newInstallation.googleDriveFolderId) {
+      res.status(201).json({ 
+        message: 'Instalación creada correctamente y carpeta de Google Drive creada', 
+        installation: newInstallation,
+      });
+    } else {
+      res.status(201).json({ 
+        message: 'Instalación creada correctamente, pero no se pudo crear la carpeta de Google Drive', 
+        installation: newInstallation,
+      });
+    }
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }
@@ -44,7 +55,7 @@ async function updateInstallation(req, res) {
       postalCode,
       city,
       province,
-      installationType
+      installationType,
     });
     res.status(200).json({ message: 'Instalación actualizada correctamente' });
   } catch (err) {
@@ -79,7 +90,7 @@ async function addDeviceToInstallation(req, res) {
     const newDevice = await services.addDeviceToInstallation(id, { nombre, ubicacion, categoria });
     res.status(200).json({ 
       message: 'Dispositivo agregado a la instalación exitosamente',
-      device: newDevice
+      device: newDevice,
     });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
@@ -140,5 +151,5 @@ export {
   addDeviceToInstallation, 
   updateDeviceInInstallation, 
   deleteDeviceFromInstallation,
-  getDevicesFromInstallation 
+  getDevicesFromInstallation,
 };
