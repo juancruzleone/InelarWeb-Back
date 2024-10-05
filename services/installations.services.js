@@ -92,7 +92,6 @@ async function addDeviceToInstallation(installationId, deviceData) {
       googleDriveFolderId = folderResult.folderId;
     } else {
       console.error('No se pudo crear la carpeta del dispositivo:', folderResult.error);
-      throw new Error('No se pudo crear la carpeta del dispositivo');
     }
     
     const formResult = await createForm(categoria, deviceId.toString());
@@ -101,11 +100,9 @@ async function addDeviceToInstallation(installationId, deviceData) {
       formId = formResult.id;
     } else {
       console.error('No se pudo crear el formulario:', formResult.error);
-      throw new Error('No se pudo crear el formulario');
     }
   } catch (error) {
     console.error('Error al crear el formulario o la carpeta:', error);
-    throw error;
   }
 
   const newDevice = {

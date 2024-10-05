@@ -97,7 +97,6 @@ async function createFolder(installationId, deviceData = null) {
     }
 
     if (deviceData) {
-
       folderName = `${deviceData.nombre} - ${deviceData.ubicacion} - ${deviceData.categoria}`;
 
       const installationFolderName = `${installation.company} - ${installation.address} - ${installation.installationType}`;
@@ -129,7 +128,6 @@ async function createFolder(installationId, deviceData = null) {
     });
 
     console.log(`Carpeta creada: ${folder.data.name} (${folder.data.id})`);
-
 
     await drive.permissions.create({
       resource: {
