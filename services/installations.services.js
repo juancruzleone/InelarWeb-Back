@@ -1,3 +1,4 @@
+// installations.services.js
 import { db } from '../db.js';
 import { ObjectId } from 'mongodb';
 import { createForm, createFolder } from './googleAppsScript.service.js';
@@ -21,7 +22,7 @@ async function createInstallation(installationData) {
     city,
     province,
     installationType,
-    devices: [],
+    devices: []
   };
 
   const result = await installationsCollection.insertOne(newInstallation);
@@ -85,35 +86,38 @@ async function addDeviceToInstallation(installationId, deviceData) {
 
   const deviceId = new ObjectId();
   
-  let codigoQR, formId, googleDriveFolderId;
+  let codigoQR;
   try {
-    const folderResult = await createFolder(installationId, { nombre, ubicacion, categoria });
-    if (folderResult.success) {
-      googleDriveFolderId = folderResult.folderId;
-    } else {
-      console.error('No se pudo crear la carpeta del dispositivo:', folderResult.error);
-    }
-    
     const formResult = await createForm(categoria, deviceId.toString());
     if (formResult.success) {
       codigoQR = formResult.url;
-      formId = formResult.id;
     } else {
-      console.error('No se pudo crear el formulario:', formResult.error);
+      console.error('Error al crear el formulario:', formResult.error);
+      codigoQR = null;
     }
   } catch (error) {
-    console.error('Error al crear el formulario o la carpeta:', error);
+    console.error('Error al crear el formulario:', error);
+    codigoQR = null;
   }
 
   const newDevice = {
     _id: deviceId,
     nombre,
     ubicacion,
-    categoria,  
-    codigoQR,
-    formId,
-    googleDriveFolderId,
+    categoria,
+    codigoQR
   };
+
+  try {
+    const folderResult = await createFolder(installation.googleDriveFolderId, newDevice);
+    if (folderResult.success) {
+      newDevice.googleDriveFolderId = folderResult.folderId;
+    } else {
+      console.error('No se pudo crear la carpeta del dispositivo en Google Drive:', folderResult.error);
+    }
+  } catch (error) {
+    console.error('Error al crear la carpeta del dispositivo en Google Drive:', error);
+  }
 
   await devicesCollection.insertOne(newDevice);
 
@@ -142,7 +146,7 @@ async function updateDeviceInInstallation(installationId, deviceId, deviceData) 
       $set: { 
         'devices.$.nombre': nombre, 
         'devices.$.ubicacion': ubicacion, 
-        'devices.$.categoria': categoria,
+        'devices.$.categoria': categoria
       } 
     },
     { returnDocument: 'after' }
@@ -192,5 +196,5 @@ export {
   addDeviceToInstallation, 
   updateDeviceInInstallation, 
   deleteDeviceFromInstallation,
-  getDevicesFromInstallation,
+  getDevicesFromInstallation 
 };
