@@ -28,8 +28,11 @@ async function createInstallation(installationData) {
   const result = await installationsCollection.insertOne(newInstallation);
   const insertedId = result.insertedId.toString();
 
+  // Create folder name
+  const folderName = `${company} - ${address} - ${installationType}`;
+
   try {
-    const folderResult = await createFolder(insertedId);
+    const folderResult = await createFolder(insertedId, folderName);
     if (folderResult.success) {
       newInstallation.googleDriveFolderId = folderResult.folderId;
       await installationsCollection.updateOne(
@@ -109,7 +112,7 @@ async function addDeviceToInstallation(installationId, deviceData) {
   };
 
   try {
-    const folderResult = await createFolder(installation.googleDriveFolderId, newDevice);
+    const folderResult = await createFolder(installation.googleDriveFolderId, null, newDevice);
     if (folderResult.success) {
       newDevice.googleDriveFolderId = folderResult.folderId;
     } else {

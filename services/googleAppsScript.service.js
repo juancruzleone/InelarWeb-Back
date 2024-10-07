@@ -5,7 +5,7 @@ import { google } from 'googleapis';
 
 dotenv.config();
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'];
+const SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/forms'];
 
 function getPrivateKey() {
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
@@ -22,6 +22,7 @@ const auth = new google.auth.JWT({
 });
 
 const drive = google.drive({ version: 'v3', auth });
+const forms = google.forms({ version: 'v1', auth });
 
 async function createForm(category, deviceId) {
   try {
@@ -37,20 +38,20 @@ async function createForm(category, deviceId) {
       }
     });
 
-    if (response.data && response.data.success && response.data.url) {
+    if (response.data && response.data.success) {
       return {
         success: true,
         url: response.data.url
       };
     } else {
-      console.error('No se pudo obtener la URL del formulario:', response.data);
+      console.error('Respuesta inesperada del script de Google:', response.data);
       return {
         success: false,
-        error: 'No se pudo obtener la URL del formulario'
+        error: response.data.error || 'Respuesta inesperada del script de Google'
       };
     }
   } catch (error) {
-    console.error('Error al crear el formulario:', error.message);
+    console.error('Error detallado al crear el formulario:', error.response ? error.response.data : error.message);
     return {
       success: false,
       error: error.message
@@ -58,18 +59,16 @@ async function createForm(category, deviceId) {
   }
 }
 
-async function createFolder(installationId, deviceData = null) {
+async function createFolder(installationId, folderName, deviceData = null) {
   try {
     const parentFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
     
-    let folderName;
     let parentFolder;
     
     if (deviceData) {
       folderName = `${deviceData.nombre} - ${deviceData.ubicacion} - ${deviceData.categoria}`;
       parentFolder = installationId;
     } else {
-      folderName = `Instalación ${installationId}`;
       parentFolder = parentFolderId;
     }
 
@@ -90,13 +89,13 @@ async function createFolder(installationId, deviceData = null) {
       resource: {
         role: 'writer', 
         type: 'user',
-        emailAddress: 'mantenimientoinelarsrl@gmail.com',  
+        emailAddress: 'juancruzleone10@gmail.com',  
       },
       fileId: folder.data.id,
       fields: 'id',
     });
 
-    console.log(`Permiso otorgado a mantenimientoinelarsrl@gmail.com para la carpeta ${folder.data.name}`);
+    console.log(`Permiso otorgado a juancruzleone10@gmail.com para la carpeta ${folder.data.name}`);
     
     return {
       success: true,
