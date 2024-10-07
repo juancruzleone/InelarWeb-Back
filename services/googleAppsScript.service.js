@@ -24,13 +24,15 @@ const auth = new google.auth.JWT({
 const drive = google.drive({ version: 'v3', auth });
 const forms = google.forms({ version: 'v1', auth });
 
-async function createForm(category, deviceId) {
+async function createForm(category, deviceId, nombre, ubicacion) {
   try {
     const token = await auth.getAccessToken();
     const response = await axios.post(process.env.GOOGLE_SCRIPT_URL, {
       action: 'createForm',
       category,
-      deviceId
+      deviceId,
+      nombre,
+      ubicacion
     }, {
       headers: {
         'Content-Type': 'application/json',
@@ -41,7 +43,8 @@ async function createForm(category, deviceId) {
     if (response.data && response.data.success) {
       return {
         success: true,
-        url: response.data.url
+        url: response.data.url,
+        id: response.data.id
       };
     } else {
       console.error('Respuesta inesperada del script de Google:', response.data);

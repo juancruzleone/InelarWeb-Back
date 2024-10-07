@@ -89,18 +89,21 @@ async function addDeviceToInstallation(installationId, deviceData) {
 
   const deviceId = new ObjectId();
   
-  let codigoQR;
+  let codigoQR, formId;
   try {
-    const formResult = await createForm(categoria, deviceId.toString());
+    const formResult = await createForm(categoria, deviceId.toString(), nombre, ubicacion);
     if (formResult.success) {
       codigoQR = formResult.url;
+      formId = formResult.id;
     } else {
       console.error('Error al crear el formulario:', formResult.error);
       codigoQR = null;
+      formId = null;
     }
   } catch (error) {
     console.error('Error al crear el formulario:', error);
     codigoQR = null;
+    formId = null;
   }
 
   const newDevice = {
@@ -108,7 +111,8 @@ async function addDeviceToInstallation(installationId, deviceData) {
     nombre,
     ubicacion,
     categoria,
-    codigoQR
+    codigoQR,
+    formId
   };
 
   try {
