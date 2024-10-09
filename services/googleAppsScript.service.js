@@ -1,11 +1,10 @@
-// googleAppsScript.service.js
 import axios from 'axios';
 import dotenv from 'dotenv';
 import { google } from 'googleapis';
 
 dotenv.config();
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/forms'];
+const SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/forms', 'https://www.googleapis.com/auth/spreadsheets'];
 
 function getPrivateKey() {
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
@@ -23,8 +22,9 @@ const auth = new google.auth.JWT({
 
 const drive = google.drive({ version: 'v3', auth });
 const forms = google.forms({ version: 'v1', auth });
+const sheets = google.sheets({ version: 'v4', auth });
 
-async function createForm(category, deviceId, nombre, ubicacion) {
+async function createForm(category, deviceId, nombre, ubicacion, googleDriveFolderId) {
   try {
     const token = await auth.getAccessToken();
     const response = await axios.post(process.env.GOOGLE_SCRIPT_URL, {
@@ -32,7 +32,8 @@ async function createForm(category, deviceId, nombre, ubicacion) {
       category,
       deviceId,
       nombre,
-      ubicacion
+      ubicacion,
+      googleDriveFolderId
     }, {
       headers: {
         'Content-Type': 'application/json',
@@ -44,7 +45,8 @@ async function createForm(category, deviceId, nombre, ubicacion) {
       return {
         success: true,
         url: response.data.url,
-        id: response.data.id
+        id: response.data.id,
+        sheetId: response.data.sheetId
       };
     } else {
       console.error('Respuesta inesperada del script de Google:', response.data);
@@ -65,9 +67,9 @@ async function createForm(category, deviceId, nombre, ubicacion) {
 async function createFolder(installationId, folderName, deviceData = null) {
   try {
     const parentFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
-    
+   
     let parentFolder;
-    
+   
     if (deviceData) {
       folderName = `${deviceData.nombre} - ${deviceData.ubicacion} - ${deviceData.categoria}`;
       parentFolder = installationId;
@@ -90,7 +92,7 @@ async function createFolder(installationId, folderName, deviceData = null) {
 
     await drive.permissions.create({
       resource: {
-        role: 'writer', 
+        role: 'writer',
         type: 'user',
         emailAddress: 'juancruzleone10@gmail.com',  
       },
@@ -99,7 +101,7 @@ async function createFolder(installationId, folderName, deviceData = null) {
     });
 
     console.log(`Permiso otorgado a juancruzleone10@gmail.com para la carpeta ${folder.data.name}`);
-    
+   
     return {
       success: true,
       folderId: folder.data.id,

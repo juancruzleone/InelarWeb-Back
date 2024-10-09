@@ -1,4 +1,3 @@
-// installations.services.js
 import { db } from '../db.js';
 import { ObjectId } from 'mongodb';
 import { createForm, createFolder } from './googleAppsScript.service.js';
@@ -28,7 +27,6 @@ async function createInstallation(installationData) {
   const result = await installationsCollection.insertOne(newInstallation);
   const insertedId = result.insertedId.toString();
 
-  // Create folder name
   const folderName = `${company} - ${address} - ${installationType}`;
 
   try {
@@ -55,7 +53,7 @@ async function updateInstallation(id, installationData) {
   }
 
   const objectId = new ObjectId(id);
-  
+ 
   await installationsCollection.findOneAndUpdate(
     { _id: objectId },
     { $set: installationData },
@@ -88,22 +86,31 @@ async function addDeviceToInstallation(installationId, deviceData) {
   }
 
   const deviceId = new ObjectId();
-  
+ 
+  // Crear la carpeta del dispositivo dentro de la carpeta de la instalación
+  let deviceFolderId;
+  try {
+    const folderResult = await createFolder(installation.googleDriveFolderId, null, { nombre, ubicacion, categoria });
+    if (folderResult.success) {
+      deviceFolderId = folderResult.folderId;
+    } else {
+      throw new Error('No se pudo crear la carpeta del dispositivo en Google Drive: ' + folderResult.error);
+    }
+  } catch (error) {
+    throw new Error('Error al crear la carpeta del dispositivo en Google Drive: ' + error.message);
+  }
+
   let codigoQR, formId;
   try {
-    const formResult = await createForm(categoria, deviceId.toString(), nombre, ubicacion);
+    const formResult = await createForm(categoria, deviceId.toString(), nombre, ubicacion, deviceFolderId);
     if (formResult.success) {
       codigoQR = formResult.url;
       formId = formResult.id;
     } else {
-      console.error('Error al crear el formulario:', formResult.error);
-      codigoQR = null;
-      formId = null;
+      throw new Error('Error al crear el formulario: ' + formResult.error);
     }
   } catch (error) {
-    console.error('Error al crear el formulario:', error);
-    codigoQR = null;
-    formId = null;
+    throw new Error('Error al crear el formulario: ' + error.message);
   }
 
   const newDevice = {
@@ -112,19 +119,9 @@ async function addDeviceToInstallation(installationId, deviceData) {
     ubicacion,
     categoria,
     codigoQR,
-    formId
+    formId,
+    googleDriveFolderId: deviceFolderId
   };
-
-  try {
-    const folderResult = await createFolder(installation.googleDriveFolderId, null, newDevice);
-    if (folderResult.success) {
-      newDevice.googleDriveFolderId = folderResult.folderId;
-    } else {
-      console.error('No se pudo crear la carpeta del dispositivo en Google Drive:', folderResult.error);
-    }
-  } catch (error) {
-    console.error('Error al crear la carpeta del dispositivo en Google Drive:', error);
-  }
 
   await devicesCollection.insertOne(newDevice);
 
@@ -149,12 +146,12 @@ async function updateDeviceInInstallation(installationId, deviceId, deviceData) 
 
   const result = await installationsCollection.findOneAndUpdate(
     { _id: installationObjectId, 'devices._id': deviceObjectId },
-    { 
-      $set: { 
-        'devices.$.nombre': nombre, 
-        'devices.$.ubicacion': ubicacion, 
+    {
+      $set: {
+        'devices.$.nombre': nombre,
+        'devices.$.ubicacion': ubicacion,
         'devices.$.categoria': categoria
-      } 
+      }
     },
     { returnDocument: 'after' }
   );
@@ -195,13 +192,13 @@ async function getDevicesFromInstallation(installationId) {
   return installation.devices || [];
 }
 
-export { 
-  getInstallations, 
-  createInstallation, 
-  updateInstallation, 
-  deleteInstallation, 
-  addDeviceToInstallation, 
-  updateDeviceInInstallation, 
+export {
+  getInstallations,
+  createInstallation,
+  updateInstallation,
+  deleteInstallation,
+  addDeviceToInstallation,
+  updateDeviceInInstallation,
   deleteDeviceFromInstallation,
-  getDevicesFromInstallation 
+  getDevicesFromInstallation
 };
