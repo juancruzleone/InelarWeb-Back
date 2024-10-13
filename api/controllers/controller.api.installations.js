@@ -107,6 +107,7 @@ async function updateDeviceInInstallation(req, res) {
     }
 
     await services.updateDeviceInInstallation(id, deviceId, { nombre, ubicacion, categoria });
+    
     res.status(200).json({ message: 'Dispositivo actualizado correctamente' });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });

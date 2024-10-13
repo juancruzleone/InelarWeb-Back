@@ -87,7 +87,6 @@ async function addDeviceToInstallation(installationId, deviceData) {
 
   const deviceId = new ObjectId();
  
-  // Crear la carpeta del dispositivo dentro de la carpeta de la instalación
   let deviceFolderId;
   try {
     const folderResult = await createFolder(installation.googleDriveFolderId, null, { nombre, ubicacion, categoria });
@@ -107,10 +106,10 @@ async function addDeviceToInstallation(installationId, deviceData) {
       codigoQR = formResult.url;
       formId = formResult.id;
     } else {
-      throw new Error('Error al crear el formulario: ' + formResult.error);
+      console.error('No se pudo crear el formulario de Google:', formResult.error);
     }
   } catch (error) {
-    throw new Error('Error al crear el formulario: ' + error.message);
+    console.error('Error al crear el formulario de Google:', error);
   }
 
   const newDevice = {
@@ -118,61 +117,39 @@ async function addDeviceToInstallation(installationId, deviceData) {
     nombre,
     ubicacion,
     categoria,
-    codigoQR,
-    formId,
-    googleDriveFolderId: deviceFolderId
+    googleDriveFolderId: deviceFolderId || null,
+    codigoQR: codigoQR || null,
+    formId: formId || null,
   };
-
-  await devicesCollection.insertOne(newDevice);
 
   await installationsCollection.findOneAndUpdate(
     { _id: installationObjectId },
-    { $push: { devices: newDevice } },
-    { returnDocument: 'after' }
+    { $push: { devices: newDevice } }
   );
-
   return newDevice;
 }
 
-async function updateDeviceInInstallation(installationId, deviceId, deviceData) {
-  const { nombre, ubicacion, categoria } = deviceData;
-
+async function updateDeviceInInstallation(installationId, deviceId, updatedDeviceData) {
   if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
-    throw new Error('El ID de la instalación o dispositivo no es válido');
+    throw new Error('El ID de la instalación o el dispositivo no es válido');
   }
 
   const installationObjectId = new ObjectId(installationId);
   const deviceObjectId = new ObjectId(deviceId);
 
-  const result = await installationsCollection.findOneAndUpdate(
-    { _id: installationObjectId, 'devices._id': deviceObjectId },
-    {
-      $set: {
-        'devices.$.nombre': nombre,
-        'devices.$.ubicacion': ubicacion,
-        'devices.$.categoria': categoria
-      }
-    },
-    { returnDocument: 'after' }
+  await devicesCollection.updateOne(
+    { _id: deviceObjectId },
+    { $set: updatedDeviceData }
   );
-
-  if (!result.value) {
-    throw new Error('No se encontró el dispositivo en la instalación');
-  }
 }
 
 async function deleteDeviceFromInstallation(installationId, deviceId) {
   if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
-    throw new Error('El ID de la instalación o dispositivo no es válido');
+    throw new Error('El ID de la instalación o el dispositivo no es válido');
   }
 
   const installationObjectId = new ObjectId(installationId);
   const deviceObjectId = new ObjectId(deviceId);
-
-  await installationsCollection.findOneAndUpdate(
-    { _id: installationObjectId },
-    { $pull: { devices: { _id: deviceObjectId } } }
-  );
 
   await devicesCollection.deleteOne({ _id: deviceObjectId });
 }
@@ -182,23 +159,17 @@ async function getDevicesFromInstallation(installationId) {
     throw new Error('El ID de la instalación no es válido');
   }
 
-  const installationObjectId = new ObjectId(installationId);
-  const installation = await installationsCollection.findOne({ _id: installationObjectId });
-
-  if (!installation) {
-    throw new Error('La instalación no existe');
-  }
-
-  return installation.devices || [];
+  const devices = await devicesCollection.find({ installationId: new ObjectId(installationId) }).toArray();
+  return devices;
 }
 
-export {
-  getInstallations,
-  createInstallation,
-  updateInstallation,
-  deleteInstallation,
-  addDeviceToInstallation,
-  updateDeviceInInstallation,
-  deleteDeviceFromInstallation,
-  getDevicesFromInstallation
+export { 
+  getInstallations, 
+  createInstallation, 
+  updateInstallation, 
+  deleteInstallation, 
+  addDeviceToInstallation, 
+  updateDeviceInInstallation, 
+  deleteDeviceFromInstallation, 
+  getDevicesFromInstallation 
 };
