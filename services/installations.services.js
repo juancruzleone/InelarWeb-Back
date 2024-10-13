@@ -170,21 +170,27 @@ async function getDevicesFromInstallation(installationId) {
 
   // Si los dispositivos están anidados en la instalación
   if (installation.devices && Array.isArray(installation.devices)) {
-    return installation.devices.map(({ _id, nombre, ubicacion, categoria }) => ({
-      _id,
-      nombre,
-      ubicacion,
-      categoria: categoria || 'No especificada',
+    return installation.devices.map(device => ({
+      _id: device._id,
+      nombre: device.nombre,
+      ubicacion: device.ubicacion,
+      categoria: device.categoria || 'No especificada',
+      googleDriveFolderId: device.googleDriveFolderId,
+      codigoQR: device.codigoQR,
+      formId: device.formId,
       installationId: installationId
     }));
   } else {
     // Si los dispositivos están en una colección separada
     const devices = await devicesCollection.find({ installationId: installationObjectId }).toArray();
-    return devices.map(({ _id, nombre, ubicacion, categoria }) => ({
-      _id,
-      nombre,
-      ubicacion,
-      categoria: categoria || 'No especificada',
+    return devices.map(device => ({
+      _id: device._id,
+      nombre: device.nombre,
+      ubicacion: device.ubicacion,
+      categoria: device.categoria || 'No especificada',
+      googleDriveFolderId: device.googleDriveFolderId,
+      codigoQR: device.codigoQR,
+      formId: device.formId,
       installationId: installationId
     }));
   }
