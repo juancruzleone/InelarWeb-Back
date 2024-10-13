@@ -159,8 +159,35 @@ async function getDevicesFromInstallation(installationId) {
     throw new Error('El ID de la instalación no es válido');
   }
 
-  const devices = await devicesCollection.find({ installationId: new ObjectId(installationId) }).toArray();
-  return devices;
+  const installationObjectId = new ObjectId(installationId);
+  
+  // Buscar la instalación primero
+  const installation = await installationsCollection.findOne({ _id: installationObjectId });
+  
+  if (!installation) {
+    throw new Error('La instalación no existe');
+  }
+
+  // Si los dispositivos están anidados en la instalación
+  if (installation.devices && Array.isArray(installation.devices)) {
+    return installation.devices.map(({ _id, nombre, ubicacion, categoria }) => ({
+      _id,
+      nombre,
+      ubicacion,
+      categoria: categoria || 'No especificada',
+      installationId: installationId
+    }));
+  } else {
+    // Si los dispositivos están en una colección separada
+    const devices = await devicesCollection.find({ installationId: installationObjectId }).toArray();
+    return devices.map(({ _id, nombre, ubicacion, categoria }) => ({
+      _id,
+      nombre,
+      ubicacion,
+      categoria: categoria || 'No especificada',
+      installationId: installationId
+    }));
+  }
 }
 
 export { 
