@@ -102,10 +102,10 @@ async function addDeviceToInstallation(installationId, deviceData) {
     if (folderResult.success) {
       deviceFolderId = folderResult.folderId;
     } else {
-      throw new Error('No se pudo crear la carpeta del dispositivo en Google Drive: ' + folderResult.error);
+      console.error('No se pudo crear la carpeta del dispositivo en Google Drive:', folderResult.error);
     }
   } catch (error) {
-    throw new Error('Error al crear la carpeta del dispositivo en Google Drive: ' + error.message);
+    console.error('Error al crear la carpeta del dispositivo en Google Drive:', error);
   }
 
   let codigoQR, formId;
@@ -131,17 +131,19 @@ async function addDeviceToInstallation(installationId, deviceData) {
     formId: formId || null,
   };
 
-  const result = await installationsCollection.findOneAndUpdate(
+  const result = await installationsCollection.updateOne(
     { _id: installationObjectId },
-    { $push: { devices: newDevice } },
-    { returnDocument: 'after' }
+    { $push: { devices: newDevice } }
   );
 
-  if (!result.value) {
+  if (result.modifiedCount === 0) {
     throw new Error('No se pudo agregar el dispositivo a la instalación');
   }
 
-  return newDevice;
+  return {
+    message: 'Dispositivo agregado correctamente',
+    device: newDevice
+  };
 }
 
 async function updateDeviceInInstallation(installationId, deviceId, updatedDeviceData) {

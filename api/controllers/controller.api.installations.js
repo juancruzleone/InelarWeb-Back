@@ -71,12 +71,10 @@ async function addDeviceToInstallation(req, res) {
   try {
     const { id } = req.params;
     const { nombre, ubicacion, categoria } = req.body;
-    const newDevice = await services.addDeviceToInstallation(id, { nombre, ubicacion, categoria });
-    res.status(200).json({ 
-      message: 'Dispositivo agregado a la instalación exitosamente',
-      device: newDevice,
-    });
+    const result = await services.addDeviceToInstallation(id, { nombre, ubicacion, categoria });
+    res.status(201).json(result);
   } catch (err) {
+    console.error('Error al agregar dispositivo:', err);
     res.status(400).json({ error: { message: err.message } });
   }
 }
