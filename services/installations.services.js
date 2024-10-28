@@ -3,7 +3,6 @@ import { ObjectId } from 'mongodb';
 import { createForm, createFolder } from './googleAppsScript.service.js';
 
 const installationsCollection = db.collection('instalaciones');
-const devicesCollection = db.collection('dispositivos');
 
 async function getInstallations() {
   const installations = await installationsCollection.find().toArray();
@@ -54,11 +53,17 @@ async function updateInstallation(id, installationData) {
 
   const objectId = new ObjectId(id);
  
-  await installationsCollection.findOneAndUpdate(
+  const result = await installationsCollection.findOneAndUpdate(
     { _id: objectId },
     { $set: installationData },
     { returnDocument: 'after' }
   );
+
+  if (!result.value) {
+    throw new Error('No se encontró la instalación para actualizar');
+  }
+
+  return result.value;
 }
 
 async function deleteInstallation(id) {
@@ -69,7 +74,11 @@ async function deleteInstallation(id) {
   const objectId = new ObjectId(id);
   const result = await installationsCollection.deleteOne({ _id: objectId });
 
-  if (result.deletedCount === 0) throw new Error('La instalación no existe');
+  if (result.deletedCount === 0) {
+    throw new Error('La instalación no existe');
+  }
+
+  return { message: 'Instalación eliminada correctamente' };
 }
 
 async function addDeviceToInstallation(installationId, deviceData) {
@@ -122,10 +131,16 @@ async function addDeviceToInstallation(installationId, deviceData) {
     formId: formId || null,
   };
 
-  await installationsCollection.findOneAndUpdate(
+  const result = await installationsCollection.findOneAndUpdate(
     { _id: installationObjectId },
-    { $push: { devices: newDevice } }
+    { $push: { devices: newDevice } },
+    { returnDocument: 'after' }
   );
+
+  if (!result.value) {
+    throw new Error('No se pudo agregar el dispositivo a la instalación');
+  }
+
   return newDevice;
 }
 
@@ -137,10 +152,20 @@ async function updateDeviceInInstallation(installationId, deviceId, updatedDevic
   const installationObjectId = new ObjectId(installationId);
   const deviceObjectId = new ObjectId(deviceId);
 
-  await devicesCollection.updateOne(
-    { _id: deviceObjectId },
-    { $set: updatedDeviceData }
+  const result = await installationsCollection.updateOne(
+    { _id: installationObjectId, "devices._id": deviceObjectId },
+    { $set: { "devices.$": { ...updatedDeviceData, _id: deviceObjectId } } }
   );
+
+  if (result.matchedCount === 0) {
+    throw new Error('No se encontró la instalación o el dispositivo');
+  }
+
+  if (result.modifiedCount === 0) {
+    throw new Error('No se realizaron cambios en el dispositivo');
+  }
+
+  return { message: 'Dispositivo actualizado correctamente' };
 }
 
 async function deleteDeviceFromInstallation(installationId, deviceId) {
@@ -151,7 +176,20 @@ async function deleteDeviceFromInstallation(installationId, deviceId) {
   const installationObjectId = new ObjectId(installationId);
   const deviceObjectId = new ObjectId(deviceId);
 
-  await devicesCollection.deleteOne({ _id: deviceObjectId });
+  const result = await installationsCollection.updateOne(
+    { _id: installationObjectId },
+    { $pull: { devices: { _id: deviceObjectId } } }
+  );
+
+  if (result.matchedCount === 0) {
+    throw new Error('No se encontró la instalación');
+  }
+
+  if (result.modifiedCount === 0) {
+    throw new Error('No se encontró el dispositivo en la instalación');
+  }
+
+  return { message: 'Dispositivo eliminado correctamente' };
 }
 
 async function getDevicesFromInstallation(installationId) {
@@ -161,39 +199,13 @@ async function getDevicesFromInstallation(installationId) {
 
   const installationObjectId = new ObjectId(installationId);
   
-  // Buscar la instalación primero
   const installation = await installationsCollection.findOne({ _id: installationObjectId });
   
   if (!installation) {
     throw new Error('La instalación no existe');
   }
 
-  // Si los dispositivos están anidados en la instalación
-  if (installation.devices && Array.isArray(installation.devices)) {
-    return installation.devices.map(device => ({
-      _id: device._id,
-      nombre: device.nombre,
-      ubicacion: device.ubicacion,
-      categoria: device.categoria || 'No especificada',
-      googleDriveFolderId: device.googleDriveFolderId,
-      codigoQR: device.codigoQR,
-      formId: device.formId,
-      installationId: installationId
-    }));
-  } else {
-    // Si los dispositivos están en una colección separada
-    const devices = await devicesCollection.find({ installationId: installationObjectId }).toArray();
-    return devices.map(device => ({
-      _id: device._id,
-      nombre: device.nombre,
-      ubicacion: device.ubicacion,
-      categoria: device.categoria || 'No especificada',
-      googleDriveFolderId: device.googleDriveFolderId,
-      codigoQR: device.codigoQR,
-      formId: device.formId,
-      installationId: installationId
-    }));
-  }
+  return installation.devices || [];
 }
 
 export { 
