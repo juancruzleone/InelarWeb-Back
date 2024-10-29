@@ -108,7 +108,7 @@ async function createFolder(installationId, folderName, deviceData = null) {
       folderName: folder.data.name,
     };
   } catch (error) {
-    console.error('Error al crear la carpeta en Google Drive o al otorgar permisos:', error);
+    console.error('Error al crear la carpeta en Google Drive o al  otorgar permisos:', error);
     return {
       success: false,
       error: 'Error al crear la carpeta en Google Drive: ' + error.message,
@@ -116,4 +116,52 @@ async function createFolder(installationId, folderName, deviceData = null) {
   }
 }
 
-export { createForm, createFolder };
+async function updateFolder(folderId, newName) {
+  try {
+    const response = await drive.files.update({
+      fileId: folderId,
+      resource: { name: newName },
+    });
+
+    console.log(`Carpeta actualizada: ${response.data.name} (${response.data.id})`);
+    return {
+      success: true,
+      folderId: response.data.id,
+      folderName: response.data.name,
+    };
+  } catch (error) {
+    console.error('Error al actualizar la carpeta en Google Drive:', error);
+    return {
+      success: false,
+      error: 'Error al actualizar la carpeta en Google Drive: ' + error.message,
+    };
+  }
+}
+
+async function deleteFolder(folderId) {
+  try {
+    await drive.files.delete({
+      fileId: folderId,
+    });
+
+    console.log(`Carpeta eliminada: ${folderId}`);
+    return {
+      success: true,
+      message: `Carpeta eliminada: ${folderId}`
+    };
+  } catch (error) {
+    console.error('Error al eliminar la carpeta en Google Drive:', error);
+    if (error.code === 404) {
+      return {
+        success: true,
+        message: `La carpeta ${folderId} ya no existe en Google Drive.`
+      };
+    }
+    return {
+      success: false,
+      error: 'Error al eliminar la carpeta en Google Drive: ' + error.message,
+    };
+  }
+}
+
+export { createForm, createFolder, updateFolder, deleteFolder };
