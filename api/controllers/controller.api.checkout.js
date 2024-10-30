@@ -18,10 +18,11 @@ const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "http://localhost:3000/carrito?status=success",
-                failure: "http://localhost:3000/carrito?status=failure",
-                pending: "http://localhost:3000/carrito?status=pending"
+                success: "https://inelar.vercel.app/carrito?status=success",
+                failure: "https://inelar.vercel.app/carrito?status=failure",
+                pending: "https://inelar.vercel.app/carrito?status=pending"
             },
+            notification_url: "https://tu-backend-url/api/checkout/webhook",
             auto_return: "approved"
         };
 
@@ -33,7 +34,7 @@ const createOrder = async (req, res) => {
             total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
             estado: 'pendiente',
             createdAt: new Date(),
-            mercadoPagoId: result.id
+            preferenceId: result.id // Cambiado de mercadoPagoId a preferenceId
         };
 
         const ordersCollection = db.collection('ordenes');
@@ -48,29 +49,58 @@ const createOrder = async (req, res) => {
 
 const updateOrderStatus = async (req, res) => {
     try {
-        const { data } = req.body;
+        console.log('Webhook received:', req.body);
         
-        if (data.type === 'payment') {
+        const { action, data } = req.body;
+        
+        // Solo procesamos notificaciones de pagos
+        if (action === "payment.created" || action === "payment.updated") {
+            const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+            
+            // Obtener los detalles del pago
+            const paymentId = data.id;
+            const payment = await mercadoPago.payment.get({ id: paymentId });
+            
+            // Obtener el preferenceId del pago
+            const preferenceId = payment.preference_id;
+            
             const ordersCollection = db.collection('ordenes');
-            const order = await ordersCollection.findOne({ mercadoPagoId: data.id });
+            const order = await ordersCollection.findOne({ preferenceId: preferenceId });
 
             if (order) {
                 let newStatus;
-                switch (data.status) {
+                switch (payment.status) {
                     case 'approved':
                         newStatus = 'pago aprobado';
                         break;
                     case 'rejected':
                         newStatus = 'pago rechazado';
                         break;
+                    case 'pending':
+                        newStatus = 'pendiente';
+                        break;
+                    case 'in_process':
+                        newStatus = 'pendiente';
+                        break;
                     default:
                         newStatus = 'pendiente';
                 }
 
                 await ordersCollection.updateOne(
-                    { mercadoPagoId: data.id },
-                    { $set: { estado: newStatus } }
+                    { preferenceId: preferenceId },
+                    { 
+                        $set: { 
+                            estado: newStatus,
+                            lastUpdated: new Date(),
+                            paymentId: paymentId,
+                            paymentStatus: payment.status
+                        } 
+                    }
                 );
+
+                console.log(`Order ${preferenceId} updated to status: ${newStatus}`);
+            } else {
+                console.log(`Order not found for preferenceId: ${preferenceId}`);
             }
         }
 
