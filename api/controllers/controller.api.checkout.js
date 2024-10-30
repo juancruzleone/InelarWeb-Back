@@ -1,7 +1,7 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { db } from '../../db.js';
 
-const createPreference = async (req, res) => {
+const createOrder = async (req, res) => {
     try {
         const { carrito, userId } = req.body;
 
@@ -18,24 +18,15 @@ const createPreference = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: `http://localhost:3000/api/checkout/success?userId=${userId}`,
-                failure: "http://localhost:3000/api/checkout/failure",
-                pending: "http://localhost:3000/api/checkout/pending"
+                success: "http://localhost:3000/carrito?status=success",
+                failure: "http://localhost:3000/carrito?status=failure",
+                pending: "http://localhost:3000/carrito?status=pending"
             },
-            auto_return: "approved",
-            external_reference: userId
+            auto_return: "approved"
         };
 
         const result = await preference.create({ body: preferenceBody });
-
-        const tempOrdersCollection = db.collection('tempOrders');
-        await tempOrdersCollection.insertOne({
-            userId,
-            carrito,
-            preferenceId: result.id,
-            createdAt: new Date()
-        });
-
+        
         res.status(200).json(result);
     } catch (error) {
         console.error('Error creating preference:', error);
@@ -43,46 +34,41 @@ const createPreference = async (req, res) => {
     }
 };
 
-const createOrder = async (req, res) => {
+// Handler para el webhook de Mercado Pago
+const handleWebhook = async (req, res) => {
     try {
-        const { payment_id, status, external_reference } = req.query;
-        const userId = external_reference;
+        const paymentData = req.body;
 
-        if (status !== 'approved') {
-            return res.redirect('http://localhost:3000/carrito?status=failure');
+        if (paymentData.type === 'payment' && paymentData.data && paymentData.data.id) {
+            const paymentId = paymentData.data.id;
+
+            const paymentInfo = await mercadoPago.payment.findById(paymentId);
+
+            if (paymentInfo && paymentInfo.status === 'approved') {
+                // Crear y guardar la orden solo si el pago es aprobado
+                const { carrito, userId } = paymentInfo.metadata;
+                
+                const orden = {
+                    userId,
+                    items: carrito,
+                    total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
+                    estado: paymentInfo.status,
+                    createdAt: new Date()
+                };
+
+                const ordersCollection = db.collection('ordenes');
+                await ordersCollection.insertOne(orden);
+            }
         }
 
-        const tempOrdersCollection = db.collection('tempOrders');
-        const tempOrder = await tempOrdersCollection.findOne({ userId });
-
-        if (!tempOrder) {
-            return res.redirect('http://localhost:3000/carrito?status=error');
-        }
-
-        const { carrito } = tempOrder;
-
-        const orden = {
-            userId, 
-            items: carrito,
-            total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-            estado: 'aprobado',
-            paymentId: payment_id,
-            createdAt: new Date()
-        };
-
-        const ordersCollection = db.collection('ordenes');
-        await ordersCollection.insertOne(orden);
-
-        await tempOrdersCollection.deleteOne({ userId });
-
-        res.redirect('http://localhost:3000/carrito?status=success');
+        res.sendStatus(200);
     } catch (error) {
-        console.error('Error creating order:', error);
-        res.redirect('http://localhost:3000/carrito?status=error');
+        console.error('Error processing webhook:', error);
+        res.sendStatus(500);
     }
 };
 
 export {
-    createPreference,
-    createOrder
+    createOrder,
+    handleWebhook
 };
