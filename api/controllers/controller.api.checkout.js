@@ -20,9 +20,9 @@ export const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "https://inelar.vercel.app/carrito?status=success&modal=exito",
-                failure: "https://inelar.vercel.app/carrito?status=failure",
-                pending: "https://inelar.vercel.app/carrito?status=pending"
+                success: "https://inelar.vercel.app/api/checkout/success",
+                failure: "https://inelar.vercel.app/api/checkout/failure",
+                pending: "https://inelar.vercel.app/api/checkout/pending"
             },
             notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook",
             auto_return: "approved",
@@ -65,7 +65,7 @@ export const updateOrderStatus = async (req, res) => {
             const paymentId = data.id;
             
             // Obtener detalles del pago
-            const payment = await mercadoPago.payment.get({ id: paymentId });
+            const payment = await mercadoPago.payment.findById({ id: paymentId });
             console.log('Detalles del pago:', payment);
             
             const ordersCollection = db.collection('ordenes');
@@ -84,7 +84,7 @@ export const updateOrderStatus = async (req, res) => {
             }
 
             // Actualizar la orden en MongoDB
-            await ordersCollection.updateOne(
+            const updateResult = await ordersCollection.updateOne(
                 { preferenceId: payment.preference_id },
                 { 
                     $set: { 
@@ -96,13 +96,7 @@ export const updateOrderStatus = async (req, res) => {
                 }
             );
 
-            console.log(`Orden actualizada - Estado: ${newStatus}`);
-            
-            // Si el pago fue aprobado, redirigir al usuario al carrito con éxito
-            if (newStatus === 'pago aprobado') {
-                res.redirect(`https://inelar.vercel.app/carrito?status=success&modal=exito`);
-                return; // Asegúrate de salir después de redirigir
-            }
+            console.log(`Orden actualizada - Estado: ${newStatus}`, updateResult);
         }
 
         res.sendStatus(200);
@@ -113,19 +107,84 @@ export const updateOrderStatus = async (req, res) => {
 };
 
 // Manejador de redirección para pago exitoso
-export const handleSuccess = (req, res) => {
-    console.log('Pago exitoso:', req.query);
-    res.redirect('https://inelar.vercel.app/carrito?status=success&modal=exito');
+export const handleSuccess = async (req, res) => {
+    try {
+        console.log('Pago exitoso:', req.query);
+        const { payment_id, status, external_reference } = req.query;
+
+        if (payment_id && status === 'approved') {
+            const ordersCollection = db.collection('ordenes');
+            const updateResult = await ordersCollection.updateOne(
+                { userId: external_reference, estado: 'pendiente' },
+                { 
+                    $set: { 
+                        estado: 'pago aprobado',
+                        paymentId: payment_id,
+                        lastUpdated: new Date()
+                    } 
+                }
+            );
+            console.log('Orden actualizada en handleSuccess:', updateResult);
+        }
+
+        res.redirect('https://inelar.vercel.app/carrito?status=success&modal=exito');
+    } catch (error) {
+        console.error('Error en handleSuccess:', error);
+        res.redirect('https://inelar.vercel.app/carrito?status=error');
+    }
 };
 
 // Manejador de redirección para pago fallido
-export const handleFailure = (req, res) => {
-    console.log('Pago fallido:', req.query);
-    res.redirect('https://inelar.vercel.app/carrito?status=failure');
+export const handleFailure = async (req, res) => {
+    try {
+        console.log('Pago fallido:', req.query);
+        const { payment_id, status, external_reference } = req.query;
+
+        if (payment_id) {
+            const ordersCollection = db.collection('ordenes');
+            const updateResult = await ordersCollection.updateOne(
+                { userId: external_reference, estado: 'pendiente' },
+                { 
+                    $set: { 
+                        estado: 'pago rechazado',
+                        paymentId: payment_id,
+                        lastUpdated: new Date()
+                    } 
+                }
+            );
+            console.log('Orden actualizada en handleFailure:', updateResult);
+        }
+
+        res.redirect('https://inelar.vercel.app/carrito?status=failure');
+    } catch (error) {
+        console.error('Error en handleFailure:', error);
+        res.redirect('https://inelar.vercel.app/carrito?status=error');
+    }
 };
 
 // Manejador de redirección para pago pendiente
-export const handlePending = (req, res) => {
-    console.log('Pago pendiente:', req.query);
-    res.redirect('https://inelar.vercel.app/carrito?status=pending');
+export const handlePending = async (req, res) => {
+    try {
+        console.log('Pago pendiente:', req.query);
+        const { payment_id, external_reference } = req.query;
+
+        if (payment_id) {
+            const ordersCollection = db.collection('ordenes');
+            const updateResult = await ordersCollection.updateOne(
+                { userId: external_reference, estado: 'pendiente' },
+                { 
+                    $set: { 
+                        paymentId: payment_id,
+                        lastUpdated: new Date()
+                    } 
+                }
+            );
+            console.log('Orden actualizada en handlePending:', updateResult);
+        }
+
+        res.redirect('https://inelar.vercel.app/carrito?status=pending');
+    } catch (error) {
+        console.error('Error en handlePending:', error);
+        res.redirect('https://inelar.vercel.app/carrito?status=error');
+    }
 };
