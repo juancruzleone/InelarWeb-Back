@@ -55,12 +55,11 @@ const createOrder = async (req, res) => {
 
 const handleSuccess = async (req, res) => {
     try {
-        const { payment_id, status, preference_id } = req.query;
+        const { payment_id, preference_id } = req.query;
         console.log('Success handler - Query params:', req.query);
 
         const ordersCollection = db.collection('ordenes');
         
-        // Actualizar la orden usando el preferenceId
         const result = await ordersCollection.updateOne(
             { preferenceId: preference_id },
             {
@@ -83,7 +82,7 @@ const handleSuccess = async (req, res) => {
 
 const handleFailure = async (req, res) => {
     try {
-        const { payment_id, status, preference_id } = req.query;
+        const { payment_id, preference_id } = req.query;
         console.log('Failure handler - Query params:', req.query);
 
         const ordersCollection = db.collection('ordenes');
@@ -110,7 +109,7 @@ const handleFailure = async (req, res) => {
 
 const handlePending = async (req, res) => {
     try {
-        const { payment_id, status, preference_id } = req.query;
+        const { payment_id, preference_id } = req.query;
         console.log('Pending handler - Query params:', req.query);
 
         const ordersCollection = db.collection('ordenes');
