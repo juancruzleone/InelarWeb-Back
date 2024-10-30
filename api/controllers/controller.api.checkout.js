@@ -1,11 +1,14 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
+
+const mercadoPago = new MercadoPagoConfig({ 
+    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN 
+});
 
 const createOrder = async (req, res) => {
     try {
         const { carrito, userId } = req.body;
 
-        const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
 
         const items = carrito.map(producto => ({
@@ -22,11 +25,14 @@ const createOrder = async (req, res) => {
                 failure: "https://inelar.vercel.app/carrito?status=failure",
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
-            auto_return: "approved"
+            auto_return: "approved",
+            metadata: {
+                userId,
+                carrito: JSON.stringify(carrito)
+            }
         };
 
         const result = await preference.create({ body: preferenceBody });
-        
         res.status(200).json(result);
     } catch (error) {
         console.error('Error creating preference:', error);
@@ -34,25 +40,59 @@ const createOrder = async (req, res) => {
     }
 };
 
-// Handler para el webhook de Mercado Pago
-const handleWebhook = async (req, res) => {
+const successCallback = async (req, res) => {
     try {
-        const paymentData = req.body;
-
-        if (paymentData.type === 'payment' && paymentData.data && paymentData.data.id) {
-            const paymentId = paymentData.data.id;
-
-            const paymentInfo = await mercadoPago.payment.findById(paymentId);
-
-            if (paymentInfo && paymentInfo.status === 'approved') {
-                // Crear y guardar la orden solo si el pago es aprobado
-                const { carrito, userId } = paymentInfo.metadata;
+        const { payment_id, status } = req.query;
+        
+        if (status === 'approved' && payment_id) {
+            const payment = new Payment(mercadoPago);
+            const paymentInfo = await payment.get({ id: payment_id });
+            
+            if (paymentInfo.status === 'approved') {
+                const { userId, carrito } = paymentInfo.metadata;
+                const carritoData = JSON.parse(carrito);
                 
                 const orden = {
                     userId,
-                    items: carrito,
-                    total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-                    estado: paymentInfo.status,
+                    items: carritoData,
+                    total: carritoData.reduce((acc, producto) => 
+                        acc + producto.precio * producto.unidades, 0),
+                    estado: 'approved',
+                    paymentId: payment_id,
+                    createdAt: new Date()
+                };
+
+                const ordersCollection = db.collection('ordenes');
+                await ordersCollection.insertOne(orden);
+            }
+        }
+        
+        res.redirect('https://inelar.vercel.app/carrito?status=success');
+    } catch (error) {
+        console.error('Error in success callback:', error);
+        res.redirect('https://inelar.vercel.app/carrito?status=failure');
+    }
+};
+
+const handleWebhook = async (req, res) => {
+    try {
+        const { data, type } = req.body;
+
+        if (type === 'payment' && data.id) {
+            const payment = new Payment(mercadoPago);
+            const paymentInfo = await payment.get({ id: data.id });
+
+            if (paymentInfo.status === 'approved') {
+                const { userId, carrito } = paymentInfo.metadata;
+                const carritoData = JSON.parse(carrito);
+                
+                const orden = {
+                    userId,
+                    items: carritoData,
+                    total: carritoData.reduce((acc, producto) => 
+                        acc + producto.precio * producto.unidades, 0),
+                    estado: 'approved',
+                    paymentId: data.id,
                     createdAt: new Date()
                 };
 
@@ -70,5 +110,6 @@ const handleWebhook = async (req, res) => {
 
 export {
     createOrder,
+    successCallback,
     handleWebhook
 };
