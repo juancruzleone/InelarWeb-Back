@@ -1,24 +1,15 @@
 import { Router } from 'express';
-import { createOrder, handleWebhook } from '../controllers/controller.api.checkout.js';
+import { createOrder } from '../controllers/controller.api.checkout.js';
 
 const router = Router();
 
 router.post('/create-order', createOrder);
-router.get('/success', (req, res) => {
-    const orderId = req.query.external_reference;
-    updateOrderStatus(orderId, 'aprobado');
-    res.redirect('/carrito?status=success');
+router.get('/success', (req, res) => res.send('Success'));
+router.get('/failure', (req, res) => res.send('Failure'));
+router.get('/pending', (req, res) => res.send('Pending'));
+router.post('/webhook', (req, res) => {
+    console.log('Webhook received:', req.body);
+    res.sendStatus(200);
 });
-router.get('/failure', (req, res) => {
-    const orderId = req.query.external_reference;
-    updateOrderStatus(orderId, 'rechazado');
-    res.redirect('/carrito?status=failure');
-});
-router.get('/pending', (req, res) => {
-    const orderId = req.query.external_reference;
-    updateOrderStatus(orderId, 'pendiente');
-    res.redirect('/carrito?status=pending');
-});
-router.post('/webhook', handleWebhook);
 
 export default router;
