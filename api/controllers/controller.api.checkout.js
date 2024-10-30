@@ -20,7 +20,7 @@ export const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "https://inelar.vercel.app/carrito?status=success",
+                success: "https://inelar.vercel.app/carrito?status=success&modal=exito",
                 failure: "https://inelar.vercel.app/carrito?status=failure",
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
@@ -97,6 +97,12 @@ export const updateOrderStatus = async (req, res) => {
             );
 
             console.log(`Orden actualizada - Estado: ${newStatus}`);
+            
+            // Si el pago fue aprobado, redirigir al usuario al carrito con éxito
+            if (newStatus === 'pago aprobado') {
+                res.redirect(`https://inelar.vercel.app/carrito?status=success&modal=exito`);
+                return; // Asegúrate de salir después de redirigir
+            }
         }
 
         res.sendStatus(200);
@@ -109,7 +115,7 @@ export const updateOrderStatus = async (req, res) => {
 // Manejador de redirección para pago exitoso
 export const handleSuccess = (req, res) => {
     console.log('Pago exitoso:', req.query);
-    res.redirect('https://inelar.vercel.app/carrito?status=success');
+    res.redirect('https://inelar.vercel.app/carrito?status=success&modal=exito');
 };
 
 // Manejador de redirección para pago fallido
