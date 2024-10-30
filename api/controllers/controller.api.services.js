@@ -1,4 +1,5 @@
 import { db } from "../../db.js";
+import { ObjectId } from "mongodb";
 import { maintenanceSchema, technicalServiceSchema, installationSchema, provisionsSchema } from "../../schemas/service.schema.js";
 
 async function insertService(service) {
@@ -24,7 +25,12 @@ async function insertService(service) {
 
     await schema.validate(service);
 
-    await db.collection("servicios").insertOne({ ...service, category: service.category });
+
+    await db.collection("servicios").insertOne({ 
+      ...service, 
+      category: service.category, 
+      estado: "no realizado" 
+    });
     console.log("Servicio guardado en la base de datos");
   } catch (error) {
     console.error("Error al insertar el servicio en la base de datos:", error);
@@ -42,4 +48,22 @@ async function getServices() {
   }
 }
 
-export { insertService, getServices };
+
+async function updateServiceStatus(id, estado) {
+  try {
+    if (!['realizado', 'no realizado'].includes(estado)) {
+      throw new Error("Estado no válido");
+    }
+
+    await db.collection("servicios").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { estado } }
+    );
+    console.log("Estado del servicio actualizado en la base de datos");
+  } catch (error) {
+    console.error("Error al actualizar el estado del servicio:", error);
+    throw error;
+  }
+}
+
+export { insertService, getServices, updateServiceStatus };

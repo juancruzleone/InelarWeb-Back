@@ -15,23 +15,27 @@ const maintenanceSchema = yup.object().shape({
   ...commonFields,
   dispositivo: yup.string().required("Selecciona un dispositivo"),
   cantidad: yup.number().positive("La cantidad debe ser mayor que cero").required("La cantidad es obligatoria"),
+  estado: yup.string().default("no realizado") 
 });
 
 const technicalServiceSchema = yup.object().shape({
   ...commonFields,
   dispositivo: yup.string().required("Selecciona un dispositivo"),
   problema: yup.string().required("Describe el problema"),
+  estado: yup.string().default("no realizado") 
 });
 
 const installationSchema = yup.object().shape({
   ...commonFields,
   dispositivo: yup.string().required("Selecciona un dispositivo"),
+  estado: yup.string().default("no realizado") 
 });
 
 const provisionsSchema = yup.object().shape({
   ...commonFields,
   dispositivo: yup.string().required("Selecciona un dispositivo"),
   cantidad: yup.number().positive("La cantidad debe ser mayor que cero").required("La cantidad es obligatoria"),
+  estado: yup.string().default("no realizado") 
 });
 
 export { maintenanceSchema, technicalServiceSchema, installationSchema, provisionsSchema };
