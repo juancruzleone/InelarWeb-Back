@@ -1,7 +1,6 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
 
-// Crear orden y preferencia de pago
 export const createOrder = async (req, res) => {
     try {
         console.log('Iniciando createOrder con body:', req.body);
@@ -53,7 +52,6 @@ export const createOrder = async (req, res) => {
     }
 };
 
-// Actualizar estado de la orden según el webhook de MercadoPago
 export const updateOrderStatus = async (req, res) => {
     try {
         console.log('Webhook recibido:', req.body);
@@ -62,17 +60,18 @@ export const updateOrderStatus = async (req, res) => {
         
         if (action === "payment.created" || action === "payment.updated") {
             const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+            const payment = new Payment(mercadoPago);
             const paymentId = data.id;
             
             // Obtener detalles del pago
-            const payment = await mercadoPago.payment.findById(paymentId);
-            console.log('Detalles del pago:', payment);
+            const paymentInfo = await payment.get({ id: paymentId });
+            console.log('Detalles del pago:', paymentInfo);
             
             const ordersCollection = db.collection('ordenes');
             
             // Determinar el nuevo estado según el status del pago
             let newStatus;
-            switch (payment.status) {
+            switch (paymentInfo.status) {
                 case 'approved':
                     newStatus = 'pago aprobado';
                     break;
@@ -83,20 +82,26 @@ export const updateOrderStatus = async (req, res) => {
                     newStatus = 'pendiente';
             }
 
-            // Actualizar la orden en MongoDB
+            // Actualizar la orden en MongoDB usando preferenceId
             const updateResult = await ordersCollection.updateOne(
-                { preferenceId: payment.preference_id },
+                { preferenceId: paymentInfo.preference_id },
                 { 
                     $set: { 
                         estado: newStatus,
                         lastUpdated: new Date(),
                         paymentId: paymentId,
-                        paymentStatus: payment.status
+                        paymentStatus: paymentInfo.status,
+                        paymentDetails: {
+                            status: paymentInfo.status,
+                            status_detail: paymentInfo.status_detail,
+                            payment_method: paymentInfo.payment_method_id,
+                            payment_type: paymentInfo.payment_type_id
+                        }
                     } 
                 }
             );
 
-            console.log(`Orden actualizada - Estado: ${newStatus}`, updateResult);
+            console.log(`Orden actualizada por webhook - Estado: ${newStatus}`, updateResult);
         }
 
         res.sendStatus(200);
@@ -106,44 +111,66 @@ export const updateOrderStatus = async (req, res) => {
     }
 };
 
-// Manejador de redirección para pago exitoso
 export const handleSuccess = async (req, res) => {
     try {
         console.log('Pago exitoso:', req.query);
-        const { payment_id, status, external_reference } = req.query;
+        const { payment_id, status, external_reference, preference_id } = req.query;
 
-        if (payment_id && status === 'approved') {
+        if (payment_id) {
             const ordersCollection = db.collection('ordenes');
+            
+            // Intentar actualizar por preferenceId primero
             const updateResult = await ordersCollection.updateOne(
-                { userId: external_reference, estado: 'pendiente' },
+                { 
+                    $or: [
+                        { preferenceId: preference_id },
+                        { userId: external_reference }
+                    ],
+                    estado: 'pendiente'
+                },
                 { 
                     $set: { 
                         estado: 'pago aprobado',
                         paymentId: payment_id,
-                        lastUpdated: new Date()
+                        lastUpdated: new Date(),
+                        successRedirectProcessed: true
                     } 
                 }
             );
+            
             console.log('Orden actualizada en handleSuccess:', updateResult);
+
+            if (updateResult.matchedCount === 0) {
+                console.log('No se encontró la orden para actualizar. Query:', {
+                    preferenceId: preference_id,
+                    userId: external_reference,
+                    payment_id: payment_id
+                });
+            }
         }
 
-        res.redirect('https://inelar.vercel.app/carrito?status=success');
+        res.redirect('https://inelar.vercel.app/carrito?status=success&modal=exito');
     } catch (error) {
         console.error('Error en handleSuccess:', error);
         res.redirect('https://inelar.vercel.app/carrito?status=error');
     }
 };
 
-// Manejador de redirección para pago fallido
 export const handleFailure = async (req, res) => {
     try {
         console.log('Pago fallido:', req.query);
-        const { payment_id, external_reference } = req.query;
+        const { payment_id, external_reference, preference_id } = req.query;
 
         if (payment_id) {
             const ordersCollection = db.collection('ordenes');
             const updateResult = await ordersCollection.updateOne(
-                { userId: external_reference, estado: 'pendiente' },
+                { 
+                    $or: [
+                        { preferenceId: preference_id },
+                        { userId: external_reference }
+                    ],
+                    estado: 'pendiente'
+                },
                 { 
                     $set: { 
                         estado: 'pago rechazado',
@@ -162,16 +189,21 @@ export const handleFailure = async (req, res) => {
     }
 };
 
-// Manejador de redirección para pago pendiente
 export const handlePending = async (req, res) => {
     try {
         console.log('Pago pendiente:', req.query);
-        const { payment_id, external_reference } = req.query;
+        const { payment_id, external_reference, preference_id } = req.query;
 
         if (payment_id) {
             const ordersCollection = db.collection('ordenes');
             const updateResult = await ordersCollection.updateOne(
-                { userId: external_reference, estado: 'pendiente' },
+                { 
+                    $or: [
+                        { preferenceId: preference_id },
+                        { userId: external_reference }
+                    ],
+                    estado: 'pendiente'
+                },
                 { 
                     $set: { 
                         paymentId: payment_id,
