@@ -3,6 +3,7 @@ import { db } from '../../db.js';
 
 const createOrder = async (req, res) => {
     try {
+        console.log('Iniciando createOrder con body:', req.body);
         const { carrito, userId } = req.body;
 
         const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
@@ -27,6 +28,7 @@ const createOrder = async (req, res) => {
         };
 
         const result = await preference.create({ body: preferenceBody });
+        console.log('Preferencia creada:', result);
 
         const orden = {
             userId, 
@@ -34,36 +36,77 @@ const createOrder = async (req, res) => {
             total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
             estado: 'pendiente',
             createdAt: new Date(),
-            preferenceId: result.id 
+            preferenceId: result.id
         };
 
         const ordersCollection = db.collection('ordenes');
         await ordersCollection.insertOne(orden);
+        console.log('Orden creada con estado pendiente');
 
         res.status(200).json(result);
     } catch (error) {
-        console.error('Error creating preference:', error);
+        console.error('Error en createOrder:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
 const updateOrderStatus = async (req, res) => {
     try {
-        console.log('Webhook received:', req.body);
+        console.log('Webhook recibido - Body:', JSON.stringify(req.body, null, 2));
         
+ 
+        const { status } = req.query;
+        if (status) {
+            console.log('Actualizando estado por back_url:', status);
+            const ordersCollection = db.collection('ordenes');
+            
+            let newStatus;
+            switch (status) {
+                case 'success':
+                    newStatus = 'pago aceptado';
+                    break;
+                case 'failure':
+                    newStatus = 'pago rechazado';
+                    break;
+                case 'pending':
+                    newStatus = 'pendiente';
+                    break;
+                default:
+                    newStatus = 'pendiente';
+            }
+
+      
+            const order = await ordersCollection.findOne(
+                { estado: 'pendiente' },
+                { sort: { createdAt: -1 } }
+            );
+
+            if (order) {
+                await ordersCollection.updateOne(
+                    { _id: order._id },
+                    { 
+                        $set: { 
+                            estado: newStatus,
+                            lastUpdated: new Date(),
+                            statusSource: 'back_url'
+                        } 
+                    }
+                );
+                console.log(`Orden actualizada a ${newStatus} por back_url`);
+            }
+        }
+        
+
         const { action, data } = req.body;
-        
-  
         if (action === "payment.created" || action === "payment.updated") {
+            console.log('Procesando notificación de pago');
             const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
             
-    
             const paymentId = data.id;
             const payment = await mercadoPago.payment.get({ id: paymentId });
+            console.log('Detalles del pago:', payment);
             
-           
             const preferenceId = payment.preference_id;
-            
             const ordersCollection = db.collection('ordenes');
             const order = await ordersCollection.findOne({ preferenceId: preferenceId });
 
@@ -71,7 +114,7 @@ const updateOrderStatus = async (req, res) => {
                 let newStatus;
                 switch (payment.status) {
                     case 'approved':
-                        newStatus = 'pago aprobado';
+                        newStatus = 'pago aceptado';
                         break;
                     case 'rejected':
                         newStatus = 'pago rechazado';
@@ -93,20 +136,23 @@ const updateOrderStatus = async (req, res) => {
                             estado: newStatus,
                             lastUpdated: new Date(),
                             paymentId: paymentId,
-                            paymentStatus: payment.status
+                            paymentStatus: payment.status,
+                            paymentDetails: payment,
+                            statusSource: 'webhook'
                         } 
                     }
                 );
 
-                console.log(`Order ${preferenceId} updated to status: ${newStatus}`);
+                console.log(`Orden ${preferenceId} actualizada a estado: ${newStatus}`);
             } else {
-                console.log(`Order not found for preferenceId: ${preferenceId}`);
+                console.log(`No se encontró la orden para el preferenceId: ${preferenceId}`);
             }
         }
 
         res.sendStatus(200);
     } catch (error) {
-        console.error('Error processing webhook:', error);
+        console.error('Error en webhook:', error);
+        console.error('Stack trace:', error.stack);
         res.status(500).json({ error: error.message });
     }
 };
