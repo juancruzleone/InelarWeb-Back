@@ -18,9 +18,9 @@ const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "http://localhost:3000/carrito?status=success",
-                failure: "http://localhost:3000/carrito?status=failure",
-                pending: "http://localhost:3000/carrito?status=pending"
+                success: "https://inelaver.vercel.app/carrito?status=success",
+                failure: "https://inelaver.vercel.app/carrito?status=failure",
+                pending: "https://inelaver.vercel.app/carrito?status=pending"
             },
             auto_return: "approved"
         };
