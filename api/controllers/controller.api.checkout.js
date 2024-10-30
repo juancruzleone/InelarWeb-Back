@@ -19,29 +19,25 @@ const createOrder = async (req, res) => {
             quantity: producto.unidades
         }));
 
+        // Guardamos temporalmente los datos del carrito en la sesión
+        req.session.orderData = {
+            userId,
+            items: carrito,
+            total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
+            createdAt: new Date()
+        };
+
         const preferenceBody = {
             items,
             back_urls: {
-                success: "http://localhost:3000/carrito?status=success",
-                failure: "http://localhost:3000/carrito?status=failure",
-                pending: "http://localhost:3000/carrito?status=pending"
+                success: "https://inelar.vercel.app/carrito?status=success",
+                failure: "https://inelar.vercel.app/carrito?status=failure",
+                pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved"
         };
 
         const result = await preference.create({ body: preferenceBody });
-
-        const orden = {
-            userId, 
-            items: carrito,
-            total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-            estado: result.status,
-            createdAt: new Date()
-        };
-
-        const ordersCollection = db.collection('ordenes');
-        await ordersCollection.insertOne(orden);
-
         res.status(200).json(result);
     } catch (error) {
         console.error('Error creating preference:', error);
@@ -49,7 +45,33 @@ const createOrder = async (req, res) => {
     }
 };
 
-export {
-    createOrder
+const handlePaymentSuccess = async (req, res) => {
+    try {
+        // Verificamos que tengamos los datos de la orden en la sesión
+        if (!req.session.orderData) {
+            return res.redirect('https://inelar.vercel.app/carrito?status=error');
+        }
+
+        // Creamos la orden en MongoDB solo cuando el pago es exitoso
+        const orden = {
+            ...req.session.orderData,
+            estado: 'aprobado',
+            payment_id: req.query.payment_id,
+            merchant_order_id: req.query.merchant_order_id
+        };
+
+        const ordersCollection = db.collection('ordenes');
+        await ordersCollection.insertOne(orden);
+
+        // Limpiamos los datos de la sesión
+        delete req.session.orderData;
+
+        // Redirigimos al usuario a la página de éxito
+        res.redirect('https://inelar.vercel.app/carrito?status=success');
+    } catch (error) {
+        console.error('Error handling payment success:', error);
+        res.redirect('https://inelar.vercel.app/carrito?status=error');
+    }
 };
 
+export { createOrder, handlePaymentSuccess };
