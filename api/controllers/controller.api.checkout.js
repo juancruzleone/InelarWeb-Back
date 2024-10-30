@@ -20,9 +20,9 @@ export const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "https://inelar.vercel.app/api/checkout/success",
-                failure: "https://inelar.vercel.app/api/checkout/failure",
-                pending: "https://inelar.vercel.app/api/checkout/pending"
+                success: "https://inelar.vercel.app/carrito?status=success",
+                failure: "https://inelar.vercel.app/carrito?status=failure",
+                pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook",
             auto_return: "approved",
@@ -65,7 +65,7 @@ export const updateOrderStatus = async (req, res) => {
             const paymentId = data.id;
             
             // Obtener detalles del pago
-            const payment = await mercadoPago.payment.findById({ id: paymentId });
+            const payment = await mercadoPago.payment.findById(paymentId);
             console.log('Detalles del pago:', payment);
             
             const ordersCollection = db.collection('ordenes');
@@ -127,7 +127,7 @@ export const handleSuccess = async (req, res) => {
             console.log('Orden actualizada en handleSuccess:', updateResult);
         }
 
-        res.redirect('https://inelar.vercel.app/carrito?status=success&modal=exito');
+        res.redirect('https://inelar.vercel.app/carrito?status=success');
     } catch (error) {
         console.error('Error en handleSuccess:', error);
         res.redirect('https://inelar.vercel.app/carrito?status=error');
@@ -138,7 +138,7 @@ export const handleSuccess = async (req, res) => {
 export const handleFailure = async (req, res) => {
     try {
         console.log('Pago fallido:', req.query);
-        const { payment_id, status, external_reference } = req.query;
+        const { payment_id, external_reference } = req.query;
 
         if (payment_id) {
             const ordersCollection = db.collection('ordenes');
