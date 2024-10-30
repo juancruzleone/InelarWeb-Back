@@ -3,11 +3,7 @@ import { db } from '../../db.js';
 
 const createOrder = async (req, res) => {
     try {
-        const { carrito, estado, userId } = req.body;
-
-        if (estado === 'aprobado') {
-            return res.status(400).json({ error: 'Ya se ha aprobado una orden.' });
-        }
+        const { carrito, userId } = req.body;
 
         const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
@@ -35,8 +31,9 @@ const createOrder = async (req, res) => {
             userId, 
             items: carrito,
             total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-            estado: result.status,
-            createdAt: new Date()
+            estado: 'pendiente',
+            createdAt: new Date(),
+            mercadoPagoId: result.id
         };
 
         const ordersCollection = db.collection('ordenes');
@@ -49,6 +46,42 @@ const createOrder = async (req, res) => {
     }
 };
 
+const updateOrderStatus = async (req, res) => {
+    try {
+        const { data } = req.body;
+        
+        if (data.type === 'payment') {
+            const ordersCollection = db.collection('ordenes');
+            const order = await ordersCollection.findOne({ mercadoPagoId: data.id });
+
+            if (order) {
+                let newStatus;
+                switch (data.status) {
+                    case 'approved':
+                        newStatus = 'pago aprobado';
+                        break;
+                    case 'rejected':
+                        newStatus = 'pago rechazado';
+                        break;
+                    default:
+                        newStatus = 'pendiente';
+                }
+
+                await ordersCollection.updateOne(
+                    { mercadoPagoId: data.id },
+                    { $set: { estado: newStatus } }
+                );
+            }
+        }
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('Error processing webhook:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
 export {
-    createOrder
+    createOrder,
+    updateOrderStatus
 };
