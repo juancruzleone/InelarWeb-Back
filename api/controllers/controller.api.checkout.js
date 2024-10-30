@@ -22,7 +22,7 @@ const createOrder = async (req, res) => {
                 failure: "https://inelar.vercel.app/carrito?status=failure",
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
-            notification_url: "https://tu-backend-url/api/checkout/webhook",
+            notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook",
             auto_return: "approved"
         };
 
@@ -34,7 +34,7 @@ const createOrder = async (req, res) => {
             total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
             estado: 'pendiente',
             createdAt: new Date(),
-            preferenceId: result.id // Cambiado de mercadoPagoId a preferenceId
+            preferenceId: result.id 
         };
 
         const ordersCollection = db.collection('ordenes');
@@ -53,15 +53,15 @@ const updateOrderStatus = async (req, res) => {
         
         const { action, data } = req.body;
         
-        // Solo procesamos notificaciones de pagos
+  
         if (action === "payment.created" || action === "payment.updated") {
             const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
             
-            // Obtener los detalles del pago
+    
             const paymentId = data.id;
             const payment = await mercadoPago.payment.get({ id: paymentId });
             
-            // Obtener el preferenceId del pago
+           
             const preferenceId = payment.preference_id;
             
             const ordersCollection = db.collection('ordenes');
