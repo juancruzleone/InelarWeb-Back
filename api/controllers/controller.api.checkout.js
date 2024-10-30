@@ -42,8 +42,9 @@ export const createOrder = async (req, res) => {
         };
 
         const ordersCollection = db.collection('ordenes');
-        await ordersCollection.insertOne(orden);
-        console.log('Orden creada con estado pendiente');
+        const insertResult = await ordersCollection.insertOne(orden);
+        console.log('Orden creada con estado pendiente. Resultado de la inserción:', insertResult);
+        console.log('Orden completa:', orden);
 
         res.status(200).json(result);
     } catch (error) {
@@ -63,51 +64,70 @@ export const updateOrderStatus = async (req, res) => {
             const payment = new Payment(mercadoPago);
             const paymentId = data.id;
             
-            // Obtener detalles del pago
-            const paymentInfo = await payment.get({ id: paymentId });
-            console.log('Detalles del pago:', paymentInfo);
-            
-            const ordersCollection = db.collection('ordenes');
-            
-            // Determinar el nuevo estado según el status del pago
-            let newStatus;
-            switch (paymentInfo.status) {
-                case 'approved':
-                    newStatus = 'pago aprobado';
-                    break;
-                case 'rejected':
-                    newStatus = 'pago rechazado';
-                    break;
-                default:
-                    newStatus = 'pendiente';
-            }
-
-            // Actualizar la orden en MongoDB usando preferenceId
-            const updateResult = await ordersCollection.updateOne(
-                { preferenceId: paymentInfo.preference_id },
-                { 
-                    $set: { 
-                        estado: newStatus,
-                        lastUpdated: new Date(),
-                        paymentId: paymentId,
-                        paymentStatus: paymentInfo.status,
-                        paymentDetails: {
-                            status: paymentInfo.status,
-                            status_detail: paymentInfo.status_detail,
-                            payment_method: paymentInfo.payment_method_id,
-                            payment_type: paymentInfo.payment_type_id
-                        }
-                    } 
+            try {
+                // Obtener detalles del pago
+                const paymentInfo = await payment.get({ id: paymentId });
+                console.log('Detalles del pago:', paymentInfo);
+                
+                const ordersCollection = db.collection('ordenes');
+                
+                // Determinar el nuevo estado según el status del pago
+                let newStatus;
+                switch (paymentInfo.status) {
+                    case 'approved':
+                        newStatus = 'pago aprobado';
+                        break;
+                    case 'rejected':
+                        newStatus = 'pago rechazado';
+                        break;
+                    default:
+                        newStatus = 'pendiente';
                 }
-            );
 
-            console.log(`Orden actualizada por webhook - Estado: ${newStatus}`, updateResult);
+                // Actualizar la orden en MongoDB usando preferenceId
+                const updateResult = await ordersCollection.updateOne(
+                    { 
+                        $or: [
+                            { preferenceId: paymentInfo.preference_id },
+                            { "userId": paymentInfo.external_reference }
+                        ]
+                    },
+                    { 
+                        $set: { 
+                            estado: newStatus,
+                            lastUpdated: new Date(),
+                            paymentId: paymentId,
+                            paymentStatus: paymentInfo.status,
+                            paymentDetails: {
+                                status: paymentInfo.status,
+                                status_detail: paymentInfo.status_detail,
+                                payment_method: paymentInfo.payment_method_id,
+                                payment_type: paymentInfo.payment_type_id,
+                                external_reference: paymentInfo.external_reference
+                            }
+                        } 
+                    }
+                );
+
+                console.log(`Orden actualizada por webhook - Estado: ${newStatus}`, updateResult);
+                
+                // Obtener la orden actualizada
+                const updatedOrder = await ordersCollection.findOne({ 
+                    $or: [
+                        { preferenceId: paymentInfo.preference_id },
+                        { "userId": paymentInfo.external_reference }
+                    ]
+                });
+                console.log('Orden actualizada completa:', updatedOrder);
+            } catch (paymentError) {
+                console.error('Error al obtener detalles del pago:', paymentError);
+            }
         }
 
-        res.sendStatus(200);
+        res.status(200).send('OK');
     } catch (error) {
         console.error('Error en webhook:', error);
-        res.status(500).json({ error: error.message });
+        res.status(200).send('OK'); // Siempre devolver 200 al webhook
     }
 };
 
@@ -119,14 +139,13 @@ export const handleSuccess = async (req, res) => {
         if (payment_id) {
             const ordersCollection = db.collection('ordenes');
             
-            // Intentar actualizar por preferenceId primero
+            // Intentar actualizar por preferenceId y userId
             const updateResult = await ordersCollection.updateOne(
                 { 
                     $or: [
                         { preferenceId: preference_id },
                         { userId: external_reference }
-                    ],
-                    estado: 'pendiente'
+                    ]
                 },
                 { 
                     $set: { 
@@ -140,16 +159,24 @@ export const handleSuccess = async (req, res) => {
             
             console.log('Orden actualizada en handleSuccess:', updateResult);
 
-            if (updateResult.matchedCount === 0) {
-                console.log('No se encontró la orden para actualizar. Query:', {
-                    preferenceId: preference_id,
-                    userId: external_reference,
-                    payment_id: payment_id
-                });
-            }
+            // Obtener la orden actualizada
+            const updatedOrder = await ordersCollection.findOne({ 
+                $or: [
+                    { preferenceId: preference_id },
+                    { userId: external_reference }
+                ]
+            });
+            console.log('Estado actual de la orden:', updatedOrder.estado);
+            console.log('Orden completa:', updatedOrder);
+
+            // Obtener información completa del pago de MercadoPago
+            const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+            const payment = new Payment(mercadoPago);
+            const paymentInfo = await payment.get({ id: payment_id });
+            console.log('Información completa del pago de MercadoPago:', paymentInfo);
         }
 
-        res.redirect('https://inelar.vercel.app/carrito?status=success&modal=exito');
+        res.redirect('https://inelar.vercel.app/carrito?status=success');
     } catch (error) {
         console.error('Error en handleSuccess:', error);
         res.redirect('https://inelar.vercel.app/carrito?status=error');
@@ -168,8 +195,7 @@ export const handleFailure = async (req, res) => {
                     $or: [
                         { preferenceId: preference_id },
                         { userId: external_reference }
-                    ],
-                    estado: 'pendiente'
+                    ]
                 },
                 { 
                     $set: { 
@@ -180,6 +206,16 @@ export const handleFailure = async (req, res) => {
                 }
             );
             console.log('Orden actualizada en handleFailure:', updateResult);
+
+            // Obtener la orden actualizada
+            const updatedOrder = await ordersCollection.findOne({ 
+                $or: [
+                    { preferenceId: preference_id },
+                    { userId: external_reference }
+                ]
+            });
+            console.log('Estado actual de la orden:', updatedOrder.estado);
+            console.log('Orden completa:', updatedOrder);
         }
 
         res.redirect('https://inelar.vercel.app/carrito?status=failure');
@@ -201,17 +237,27 @@ export const handlePending = async (req, res) => {
                     $or: [
                         { preferenceId: preference_id },
                         { userId: external_reference }
-                    ],
-                    estado: 'pendiente'
+                    ]
                 },
                 { 
                     $set: { 
+                        estado: 'pendiente',
                         paymentId: payment_id,
                         lastUpdated: new Date()
                     } 
                 }
             );
             console.log('Orden actualizada en handlePending:', updateResult);
+
+            // Obtener la orden actualizada
+            const updatedOrder = await ordersCollection.findOne({ 
+                $or: [
+                    { preferenceId: preference_id },
+                    { userId: external_reference }
+                ]
+            });
+            console.log('Estado actual de la orden:', updatedOrder.estado);
+            console.log('Orden completa:', updatedOrder);
         }
 
         res.redirect('https://inelar.vercel.app/carrito?status=pending');
