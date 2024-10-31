@@ -27,7 +27,6 @@ route.get('/servicios', [isAdmin], async (req, res) => {
   }
 });
 
-
 route.patch('/servicios/:id/estado', [isAdmin], async (req, res) => {
   try {
     const { id } = req.params;

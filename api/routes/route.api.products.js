@@ -8,10 +8,8 @@ import { isAdmin } from '../../middleware/auth.role.middleware.js';
 
 const route = Router();
 
-
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
-
 
 const uploadToCloudinary = (buffer) => {
   return new Promise((resolve, reject) => {

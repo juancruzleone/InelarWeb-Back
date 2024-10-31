@@ -25,11 +25,11 @@ async function insertService(service) {
 
     await schema.validate(service);
 
-
     await db.collection("servicios").insertOne({ 
       ...service, 
       category: service.category, 
-      estado: "no realizado" 
+      estado: "no realizado",
+      createdAt: new Date() // Add creation date
     });
     console.log("Servicio guardado en la base de datos");
   } catch (error) {
@@ -40,14 +40,16 @@ async function insertService(service) {
 
 async function getServices() {
   try {
-    const servicios = await db.collection("servicios").find().toArray();
+    const servicios = await db.collection("servicios")
+      .find()
+      .sort({ _id: -1 }) // Sort by _id in descending order
+      .toArray();
     return servicios;
   } catch (error) {
     console.error("Error al obtener la lista de servicios:", error);
     throw error;
   }
 }
-
 
 async function updateServiceStatus(id, estado) {
   try {

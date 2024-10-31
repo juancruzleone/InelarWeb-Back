@@ -17,7 +17,6 @@ route.post('/contactos', async (req, res) => {
   }
 });
 
-
 route.get('/contactos', [isAdmin], async (req, res) => {
   try {
     const contactos = await controllers.getContacts();
