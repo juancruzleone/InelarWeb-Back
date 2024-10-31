@@ -5,7 +5,7 @@ import { createForm, createFolder, updateFolder, deleteFolder } from './googleAp
 const installationsCollection = db.collection('instalaciones');
 
 async function getInstallations() {
-  const installations = await installationsCollection.find().toArray();
+  const installations = await installationsCollection.find().sort({ _id: -1 }).toArray();
   return installations;
 }
 
@@ -239,7 +239,7 @@ async function deleteDeviceFromInstallation(installationId, deviceId) {
         console.log(`Carpeta de Google Drive eliminada: ${deviceToDelete.googleDriveFolderId}`);
       }
     } catch (error) {
-      console.error('Error al intentar eliminar la carpeta en Google Drive:', error);
+      console.error('Error al intentar  eliminar la carpeta en Google Drive:', error);
       folderDeleteResult = { success: false, error: error.message };
     }
   } else {
@@ -280,7 +280,7 @@ async function getDevicesFromInstallation(installationId) {
     throw new Error('La instalación no existe');
   }
 
-  return installation.devices || [];
+  return installation.devices ? installation.devices.sort((a, b) => b._id.getTimestamp() - a._id.getTimestamp()) : [];
 }
 
 export { 

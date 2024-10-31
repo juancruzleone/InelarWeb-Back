@@ -23,7 +23,6 @@ const validateService = async (req, res, next) => {
 
     await schema.validate(req.body, { abortEarly: false });
 
-
     const currentDate = new Date();
     const selectedDate = new Date(req.body.fecha);
 

@@ -28,7 +28,7 @@ async function login(cuenta) {
 }
 
 async function getAllAccounts() {
-    return cuentaCollection.find({}).toArray(); 
+    return cuentaCollection.find({}).sort({ _id: -1 }).toArray();
 }
 
 async function getAccountById(id) {

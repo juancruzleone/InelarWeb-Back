@@ -22,7 +22,9 @@ async function getProducts(filter = {}) {
         filterMongo.$text = { $search: filter.description };
     }
 
-    return productsCollection.find(filterMongo).toArray();
+    return productsCollection.find(filterMongo)
+        .sort({ _id: -1 })  // Sort by _id in descending order
+        .toArray();
 }
 
 async function getProductbyId(id) {

@@ -2,6 +2,13 @@ import { db } from "../../db.js";
 import { ObjectId } from "mongodb";
 import { maintenanceSchema, technicalServiceSchema, installationSchema, provisionsSchema } from "../../schemas/service.schema.js";
 
+function formatDate(date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 async function insertService(service) {
   try {
     let schema;
@@ -25,11 +32,13 @@ async function insertService(service) {
 
     await schema.validate(service);
 
+    const formattedDate = formatDate(new Date(service.fecha));
+    
     await db.collection("servicios").insertOne({ 
       ...service, 
-      category: service.category, 
+      fecha: formattedDate,
       estado: "no realizado",
-      createdAt: new Date() // Add creation date
+      createdAt: new Date()
     });
     console.log("Servicio guardado en la base de datos");
   } catch (error) {
@@ -42,9 +51,13 @@ async function getServices() {
   try {
     const servicios = await db.collection("servicios")
       .find()
-      .sort({ _id: -1 }) // Sort by _id in descending order
+      .sort({ _id: -1 })
       .toArray();
-    return servicios;
+
+    return servicios.map(service => ({
+      ...service,
+      fecha: formatDate(new Date(service.fecha))
+    }));
   } catch (error) {
     console.error("Error al obtener la lista de servicios:", error);
     throw error;

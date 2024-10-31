@@ -5,7 +5,9 @@ const clientsCollection = db.collection("clientes");
 
 async function getClients(filter = {}) {
     const filterMongo = { eliminado: { $ne: true } };
-    return clientsCollection.find(filterMongo).toArray();
+    return clientsCollection.find(filterMongo)
+        .sort({ _id: -1 }) // Sort by _id in descending order
+        .toArray();
 }
 
 async function getClientById(id) {
