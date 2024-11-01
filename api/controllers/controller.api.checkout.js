@@ -21,9 +21,9 @@ const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "https://inelar.vercel.app/carrito?status=success",
-                failure: "https://inelar.vercel.app/carrito?status=failure",
-                pending: "https://inelar.vercel.app/carrito?status=pending"
+                success: "https://inelarweb-back.onrender.com/api/checkout/success",
+                failure: "https://inelarweb-back.onrender.com/api/checkout/failure",
+                pending: "https://inelarweb-back.onrender.com/api/checkout/pending"
             },
             auto_return: "approved",
             notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook",
@@ -40,6 +40,39 @@ const createOrder = async (req, res) => {
     }
 };
 
+const handleSuccess = async (req, res) => {
+    try {
+        console.log('Pago exitoso:', req.query);
+        const { payment_id, status, external_reference } = req.query;
+
+        if (status === 'approved') {
+            console.log('Pago aprobado, obteniendo detalles del pago');
+
+            const payment = await new Payment(mercadoPago).get({ id: payment_id });
+            console.log('Detalles del pago:', JSON.stringify(payment, null, 2));
+
+            const orden = {
+                userId: external_reference,
+                items: payment.additional_info.items,
+                total: payment.transaction_amount,
+                estado: 'aprobado',
+                createdAt: new Date(),
+                paymentId: payment.id
+            };
+
+            const ordersCollection = db.collection('ordenes');
+            const result = await ordersCollection.insertOne(orden);
+
+            console.log('Orden insertada en MongoDB:', result.insertedId);
+        }
+
+        res.redirect('https://inelar.vercel.app/carrito?status=success');
+    } catch (error) {
+        console.error('Error al procesar el pago exitoso:', error);
+        res.redirect('https://inelar.vercel.app/carrito?status=error');
+    }
+};
+
 const handleWebhook = async (req, res) => {
     try {
         console.log('Webhook recibido:', JSON.stringify(req.body, null, 2));
@@ -48,27 +81,34 @@ const handleWebhook = async (req, res) => {
 
         if (type === 'payment') {
             const paymentId = data.id;
-            console.log('ID de pago recibido:', paymentId);
+            console.log('ID de pago recibido en webhook:', paymentId);
 
             const payment = await new Payment(mercadoPago).get({ id: paymentId });
-            console.log('Detalles del pago:', JSON.stringify(payment, null, 2));
+            console.log('Detalles del pago en webhook:', JSON.stringify(payment, null, 2));
 
             if (payment.status === 'approved') {
-                console.log('Pago aprobado, insertando orden en MongoDB');
-
-                const orden = {
-                    userId: payment.external_reference,
-                    items: payment.additional_info.items,
-                    total: payment.transaction_amount,
-                    estado: 'aprobado',
-                    createdAt: new Date(),
-                    paymentId: payment.id
-                };
+                console.log('Pago aprobado en webhook, verificando si la orden ya existe');
 
                 const ordersCollection = db.collection('ordenes');
-                const result = await ordersCollection.insertOne(orden);
+                const existingOrder = await ordersCollection.findOne({ paymentId: payment.id });
 
-                console.log('Orden insertada en MongoDB:', result.insertedId);
+                if (!existingOrder) {
+                    console.log('Orden no existe, insertando en MongoDB');
+
+                    const orden = {
+                        userId: payment.external_reference,
+                        items: payment.additional_info.items,
+                        total: payment.transaction_amount,
+                        estado: 'aprobado',
+                        createdAt: new Date(),
+                        paymentId: payment.id
+                    };
+
+                    const result = await ordersCollection.insertOne(orden);
+                    console.log('Orden insertada en MongoDB desde webhook:', result.insertedId);
+                } else {
+                    console.log('Orden ya existe en MongoDB, no se inserta nuevamente');
+                }
             }
         }
 
@@ -81,5 +121,6 @@ const handleWebhook = async (req, res) => {
 
 export {
     createOrder,
+    handleSuccess,
     handleWebhook
 };
