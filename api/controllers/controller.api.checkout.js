@@ -12,7 +12,8 @@ const createOrder = async (req, res) => {
             title: producto.nombre,
             unit_price: parseFloat(producto.precio),
             currency_id: "ARS",
-            quantity: producto.unidades
+            quantity: producto.unidades,
+            id: userId // Añadimos el userId a cada ítem
         }));
 
         const preferenceBody = {
@@ -27,6 +28,18 @@ const createOrder = async (req, res) => {
         };
 
         const result = await preference.create({ body: preferenceBody });
+
+        // Creamos la orden en la base de datos
+        const orden = {
+            userId,
+            items: carrito,
+            total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
+            estado: 'pending',
+            createdAt: new Date()
+        };
+
+        const ordersCollection = db.collection('ordenes');
+        await ordersCollection.insertOne(orden);
        
         res.status(200).json(result);
     } catch (error) {
@@ -46,20 +59,21 @@ const handleWebhook = async (req, res) => {
             if (paymentInfo.status === 'approved') {
                 const ordersCollection = db.collection('ordenes');
                
-                const orden = {
-                    userId: paymentInfo.additional_info.items[0].id, // Asumiendo que el userId está en el primer ítem
-                    items: paymentInfo.additional_info.items.map(item => ({
-                        nombre: item.title,
-                        precio: item.unit_price,
-                        unidades: item.quantity
-                    })),
-                    total: paymentInfo.transaction_amount,
-                    estado: 'approved',
-                    createdAt: new Date()
-                };
+                const userId = paymentInfo.additional_info.items[0].id; // Obtenemos el userId del primer ítem
 
-                await ordersCollection.insertOne(orden);
-                console.log('Orden insertada con éxito:', orden);
+                // Actualizamos la orden existente
+                await ordersCollection.updateOne(
+                    { userId: userId, estado: 'pending' },
+                    { 
+                        $set: { 
+                            estado: 'approved',
+                            total: paymentInfo.transaction_amount,
+                            updatedAt: new Date()
+                        }
+                    }
+                );
+
+                console.log('Orden actualizada con éxito para el usuario:', userId);
             }
         }
 
