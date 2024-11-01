@@ -1,18 +1,14 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
+
+const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
 const createOrder = async (req, res) => {
     try {
-        const { carrito, estado, userId } = req.body;
+        const { carrito, userId } = req.body;
 
         console.log('Creando orden para el usuario:', userId);
 
-        if (estado === 'aprobado') {
-            console.log('Intento de crear orden ya aprobada');
-            return res.status(400).json({ error: 'Ya se ha aprobado una orden.' });
-        }
-
-        const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
 
         const items = carrito.map(producto => ({
@@ -30,11 +26,12 @@ const createOrder = async (req, res) => {
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved",
-            notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook"
+            notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook",
+            external_reference: userId
         };
 
         const result = await preference.create({ body: preferenceBody });
-        console.log('Preferencia creada:', result);
+        console.log('Preferencia creada:', JSON.stringify(result, null, 2));
 
         res.status(200).json(result);
     } catch (error) {
@@ -45,7 +42,7 @@ const createOrder = async (req, res) => {
 
 const handleWebhook = async (req, res) => {
     try {
-        console.log('Webhook recibido:', req.body);
+        console.log('Webhook recibido:', JSON.stringify(req.body, null, 2));
 
         const { type, data } = req.body;
 
@@ -53,27 +50,25 @@ const handleWebhook = async (req, res) => {
             const paymentId = data.id;
             console.log('ID de pago recibido:', paymentId);
 
-            // Aquí deberías usar el SDK de MercadoPago para obtener los detalles del pago
-            const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-            const payment = await mercadoPago.payment.findById(paymentId);
-
-            console.log('Detalles del pago:', payment);
+            const payment = await new Payment(mercadoPago).get({ id: paymentId });
+            console.log('Detalles del pago:', JSON.stringify(payment, null, 2));
 
             if (payment.status === 'approved') {
                 console.log('Pago aprobado, insertando orden en MongoDB');
 
                 const orden = {
-                    userId: payment.additional_info.items[0].id, // Asumiendo que guardas el userId en additional_info
+                    userId: payment.external_reference,
                     items: payment.additional_info.items,
                     total: payment.transaction_amount,
                     estado: 'aprobado',
-                    createdAt: new Date()
+                    createdAt: new Date(),
+                    paymentId: payment.id
                 };
 
                 const ordersCollection = db.collection('ordenes');
-                await ordersCollection.insertOne(orden);
+                const result = await ordersCollection.insertOne(orden);
 
-                console.log('Orden insertada en MongoDB:', orden);
+                console.log('Orden insertada en MongoDB:', result.insertedId);
             }
         }
 
