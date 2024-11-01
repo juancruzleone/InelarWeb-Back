@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Payment, Preference } from 'mercadopago';
 import { db } from '../../db.js';
 
 const createOrder = async (req, res) => {
@@ -23,7 +23,8 @@ const createOrder = async (req, res) => {
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved",
-            external_reference: userId // Usamos esto para identificar al usuario en el webhook
+            external_reference: userId,
+            notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook"
         };
 
         const result = await preference.create({ body: preferenceBody });
@@ -36,13 +37,17 @@ const createOrder = async (req, res) => {
 };
 
 const handleWebhook = async (req, res) => {
+    console.log('Webhook received:', req.body);
     try {
-        const { data } = req.body;
+        const { type, data } = req.body;
         
-        if (data.type === "payment") {
+        if (type === "payment") {
             const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-            const payment = await mercadoPago.payment.findById(data.id);
+            const paymentClient = new Payment(mercadoPago);
+            const payment = await paymentClient.get({ id: data.id });
             
+            console.log('Payment data:', payment);
+
             if (payment.status === 'approved') {
                 const userId = payment.external_reference;
                 const ordersCollection = db.collection('ordenes');
@@ -52,12 +57,17 @@ const handleWebhook = async (req, res) => {
                     items: payment.additional_info.items,
                     total: payment.transaction_amount,
                     estado: 'aprobado',
-                    createdAt: new Date()
+                    createdAt: new Date(),
+                    paymentId: payment.id
                 };
 
-                await ordersCollection.insertOne(orden);
-                console.log('Orden insertada con éxito:', orden);
+                const result = await ordersCollection.insertOne(orden);
+                console.log('Orden insertada con éxito:', result);
+            } else {
+                console.log('Pago no aprobado. Estado:', payment.status);
             }
+        } else {
+            console.log('Evento no relevante:', type);
         }
 
         res.sendStatus(200);
