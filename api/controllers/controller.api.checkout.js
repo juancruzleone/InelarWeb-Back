@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Payment, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
 
 const createOrder = async (req, res) => {
@@ -49,20 +49,7 @@ const handleWebhook = async (req, res) => {
             console.log('Payment data:', payment);
 
             if (payment.status === 'approved') {
-                const userId = payment.external_reference;
-                const ordersCollection = db.collection('ordenes');
-                
-                const orden = {
-                    userId, 
-                    items: payment.additional_info.items,
-                    total: payment.transaction_amount,
-                    estado: 'aprobado',
-                    createdAt: new Date(),
-                    paymentId: payment.id
-                };
-
-                const result = await ordersCollection.insertOne(orden);
-                console.log('Orden insertada con éxito:', result);
+                await createOrderInDatabase(payment);
             } else {
                 console.log('Pago no aprobado. Estado:', payment.status);
             }
@@ -77,7 +64,46 @@ const handleWebhook = async (req, res) => {
     }
 };
 
+const handleSuccess = async (req, res) => {
+    const { payment_id, status } = req.query;
+    
+    if (status === 'approved') {
+        try {
+            const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+            const paymentClient = new Payment(mercadoPago);
+            const payment = await paymentClient.get({ id: payment_id });
+
+            await createOrderInDatabase(payment);
+
+            res.redirect('https://inelar.vercel.app/carrito?status=success');
+        } catch (error) {
+            console.error('Error processing success payment:', error);
+            res.redirect('https://inelar.vercel.app/carrito?status=error');
+        }
+    } else {
+        res.redirect('https://inelar.vercel.app/carrito?status=not_approved');
+    }
+};
+
+const createOrderInDatabase = async (payment) => {
+    const userId = payment.external_reference;
+    const ordersCollection = db.collection('ordenes');
+    
+    const orden = {
+        userId, 
+        items: payment.additional_info.items,
+        total: payment.transaction_amount,
+        estado: 'aprobado',
+        createdAt: new Date(),
+        paymentId: payment.id
+    };
+
+    const result = await ordersCollection.insertOne(orden);
+    console.log('Orden insertada con éxito:', result);
+};
+
 export {
     createOrder,
-    handleWebhook
+    handleWebhook,
+    handleSuccess
 };
