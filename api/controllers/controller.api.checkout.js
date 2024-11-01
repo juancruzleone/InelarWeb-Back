@@ -1,6 +1,5 @@
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
-import { ObjectId } from 'mongodb';
 
 const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
@@ -13,8 +12,7 @@ const createOrder = async (req, res) => {
             title: producto.nombre,
             unit_price: parseFloat(producto.precio),
             currency_id: "ARS",
-            quantity: producto.unidades,
-            id: userId // Añadimos el userId a cada ítem
+            quantity: producto.unidades
         }));
 
         const preferenceBody = {
@@ -49,14 +47,14 @@ const handleWebhook = async (req, res) => {
                 const ordersCollection = db.collection('ordenes');
                
                 const orden = {
-                    userId: paymentInfo.additional_info.items[0].id, // Obtenemos el userId del primer ítem
+                    userId: paymentInfo.additional_info.items[0].id, // Asumiendo que el userId está en el primer ítem
                     items: paymentInfo.additional_info.items.map(item => ({
                         nombre: item.title,
                         precio: item.unit_price,
                         unidades: item.quantity
                     })),
                     total: paymentInfo.transaction_amount,
-                    estado: 'no enviado', // Cambiamos el estado inicial a 'no enviado'
+                    estado: 'approved',
                     createdAt: new Date()
                 };
 
@@ -72,34 +70,7 @@ const handleWebhook = async (req, res) => {
     }
 };
 
-const updateOrderStatus = async (req, res) => {
-    try {
-        const { orderId } = req.params;
-        const { estado } = req.body;
-
-        if (estado !== 'enviado') {
-            return res.status(400).json({ error: 'El estado solo puede ser cambiado a "enviado"' });
-        }
-
-        const ordersCollection = db.collection('ordenes');
-        const result = await ordersCollection.updateOne(
-            { _id: new ObjectId(orderId), estado: 'no enviado' },
-            { $set: { estado: 'enviado', updatedAt: new Date() } }
-        );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ error: 'Orden no encontrada o ya enviada' });
-        }
-
-        res.status(200).json({ message: 'Estado de la orden actualizado con éxito' });
-    } catch (error) {
-        console.error('Error updating order status:', error);
-        res.status(500).json({ error: error.message });
-    }
-};
-
 export {
     createOrder,
-    handleWebhook,
-    updateOrderStatus
+    handleWebhook
 };
