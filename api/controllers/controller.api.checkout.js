@@ -23,7 +23,10 @@ const createOrder = async (req, res) => {
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved",
-            notification_url: "https://inelarweb-back.onrender.com/api/webhook"
+            notification_url: "https://inelarweb-back.onrender.com/api/webhook",
+            metadata: {
+                userId: userId
+            }
         };
 
         const result = await preference.create({ body: preferenceBody });
@@ -47,7 +50,7 @@ const handleWebhook = async (req, res) => {
                 const ordersCollection = db.collection('ordenes');
                 
                 const orden = {
-                    userId: paymentInfo.additional_info.items[0].id, // Asumiendo que el userId está en el primer ítem
+                    userId: paymentInfo.metadata.userId,
                     items: paymentInfo.additional_info.items.map(item => ({
                         nombre: item.title,
                         precio: item.unit_price,
