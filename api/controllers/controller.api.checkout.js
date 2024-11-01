@@ -34,7 +34,8 @@ const createOrder = async (req, res) => {
             userId,
             items: carrito,
             total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-            estado: 'no enviado',
+            estado: 'pending',
+            estadoEnvio: 'no enviado',
             createdAt: new Date()
         };
 
@@ -62,9 +63,10 @@ const handleWebhook = async (req, res) => {
                 const userId = paymentInfo.additional_info.items[0].id;
 
                 await ordersCollection.updateOne(
-                    { userId: userId, estado: 'no enviado' },
+                    { userId: userId, estado: 'pending' },
                     { 
                         $set: { 
+                            estado: 'approved',
                             total: paymentInfo.transaction_amount,
                             updatedAt: new Date()
                         }
@@ -85,20 +87,20 @@ const handleWebhook = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { estado } = req.body;
+        const { estadoEnvio } = req.body;
 
-        if (estado !== 'enviado') {
-            return res.status(400).json({ error: 'El estado solo puede ser cambiado a "enviado"' });
+        if (estadoEnvio !== 'enviado') {
+            return res.status(400).json({ error: 'El estado de envío solo puede ser cambiado a "enviado"' });
         }
 
         const ordersCollection = db.collection('ordenes');
         const result = await ordersCollection.updateOne(
-            { _id: new ObjectId(orderId), estado: 'no enviado' },
-            { $set: { estado: 'enviado', updatedAt: new Date() } }
+            { _id: new ObjectId(orderId) },
+            { $set: { estadoEnvio: 'enviado', updatedAt: new Date() } }
         );
 
         if (result.matchedCount === 0) {
-            return res.status(404).json({ error: 'Orden no encontrada o ya enviada' });
+            return res.status(404).json({ error: 'Orden no encontrada' });
         }
 
         res.status(200).json({ message: 'Estado de la orden actualizado con éxito' });
