@@ -19,12 +19,12 @@ const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "https://inelar.vercel.app/carrito?status=success",
-                failure: "https://inelar.vercel.app/carrito?status=failure",
-                pending: "https://inelar.vercel.app/carrito?status=pending"
+                success: "https://inelar.vercel.app/api/checkout/success",
+                failure: "https://inelar.vercel.app/api/checkout/failure",
+                pending: "https://inelar.vercel.app/api/checkout/pending"
             },
             auto_return: "approved",
-            notification_url: "https://tudominio.com/api/checkout/webhook" // Asegúrate de usar tu dominio aquí
+            notification_url: "https://inelar.vercel.app/api/checkout/webhook"
         };
 
         const result = await preference.create({ body: preferenceBody });
