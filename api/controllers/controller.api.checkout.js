@@ -18,9 +18,9 @@ const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "https://inelar.vercel.app/carrito?status=success",
-                failure: "https://inelar.vercel.app/carrito?status=failure",
-                pending: "https://inelar.vercel.app/carrito?status=pending"
+                success: "https://inelarweb-back.onrender.com/api/checkout/success",
+                failure: "https://inelarweb-back.onrender.com/api/checkout/failure",
+                pending: "https://inelarweb-back.onrender.com/api/checkout/pending"
             },
             auto_return: "approved",
             external_reference: userId,
@@ -65,7 +65,7 @@ const handleWebhook = async (req, res) => {
 };
 
 const handleSuccess = async (req, res) => {
-    const { payment_id, status } = req.query;
+    const { payment_id, status, external_reference } = req.query;
     
     if (status === 'approved') {
         try {
@@ -75,7 +75,7 @@ const handleSuccess = async (req, res) => {
 
             await createOrderInDatabase(payment);
 
-            res.redirect('https://inelar.vercel.app/carrito?status=success');
+            res.redirect(`https://inelar.vercel.app/carrito?status=success&orderId=${payment.id}`);
         } catch (error) {
             console.error('Error processing success payment:', error);
             res.redirect('https://inelar.vercel.app/carrito?status=error');
