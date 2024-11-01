@@ -1,11 +1,13 @@
+// controller.api.checkout.js
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { db } from '../../db.js';
+
+// Initialize MercadoPago globally
+const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
 const createOrder = async (req, res) => {
     try {
         const { carrito, userId } = req.body;
-
-        const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
 
         const items = carrito.map(producto => ({
@@ -40,7 +42,7 @@ const handleWebhook = async (req, res) => {
         const { type, data } = req.body;
 
         if (type === 'payment') {
-            const paymentInfo = await mercadoPago.payment.findById(data.id);
+            const paymentInfo = await mercadoPago.payment.findById(data.id); // Now accessible
             
             if (paymentInfo.status === 'approved') {
                 const { userId, carrito } = req.body; 
