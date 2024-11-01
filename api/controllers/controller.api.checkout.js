@@ -23,7 +23,7 @@ const createOrder = async (req, res) => {
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved",
-            external_reference: userId // Usamos esto para identificar al usuario
+            external_reference: userId
         };
 
         const result = await preference.create({ body: preferenceBody });
@@ -36,38 +36,43 @@ const createOrder = async (req, res) => {
 };
 
 const handleOrderStatus = async (req, res) => {
-    const { status, payment_id, external_reference } = req.query;
+    const { status } = req.query;
+    res.redirect(`https://inelar.vercel.app/carrito?status=${status}`);
+};
 
-    if (status === 'success' && payment_id) {
-        try {
+const webhookListener = async (req, res) => {
+    try {
+        const { type, data } = req.body;
+
+        if (type === 'payment') {
             const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-            const payment = await mercadoPago.payment.get({ id: payment_id });
+            const payment = await mercadoPago.payment.get({ id: data.id });
 
             if (payment.status === 'approved') {
                 const ordersCollection = db.collection('ordenes');
-                
+
                 const orden = {
-                    userId: external_reference,
+                    userId: payment.external_reference,
                     items: payment.additional_info.items,
                     total: payment.transaction_amount,
                     estado: 'aprobado',
                     createdAt: new Date(),
-                    paymentId: payment_id
+                    paymentId: payment.id
                 };
 
                 await ordersCollection.insertOne(orden);
                 console.log('Orden insertada con éxito:', orden);
             }
-        } catch (error) {
-            console.error('Error al procesar el pago exitoso:', error);
         }
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('Error en el webhook:', error);
+        res.sendStatus(500);
     }
-
-    // Redirigir al usuario de vuelta a la página del carrito
-    res.redirect(`https://inelar.vercel.app/carrito?status=${status}`);
 };
 
 export {
     createOrder,
-    handleOrderStatus
+    handleOrderStatus,
+    webhookListener
 };
