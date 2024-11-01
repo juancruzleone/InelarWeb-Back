@@ -22,10 +22,12 @@ const createOrder = async (req, res) => {
                 failure: "https://inelar.vercel.app/carrito?status=failure",
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
-            auto_return: "approved"
+            auto_return: "approved",
+            external_reference: userId // Usamos esto para identificar al usuario en el webhook
         };
 
         const result = await preference.create({ body: preferenceBody });
+
         res.status(200).json(result);
     } catch (error) {
         console.error('Error creating preference:', error);
@@ -33,37 +35,39 @@ const createOrder = async (req, res) => {
     }
 };
 
-const handleSuccess = async (req, res) => {
+const handleWebhook = async (req, res) => {
     try {
-        // Aquí se debe obtener la información de la transacción con el ID que MercadoPago devuelve
-        const { payment_id, external_reference } = req.query;
+        const { data } = req.body;
+        
+        if (data.type === "payment") {
+            const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+            const payment = await mercadoPago.payment.findById(data.id);
+            
+            if (payment.status === 'approved') {
+                const userId = payment.external_reference;
+                const ordersCollection = db.collection('ordenes');
+                
+                const orden = {
+                    userId, 
+                    items: payment.additional_info.items,
+                    total: payment.transaction_amount,
+                    estado: 'aprobado',
+                    createdAt: new Date()
+                };
 
-        const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-        const paymentInfo = await mercadoPago.payment.findById(payment_id);
-
-        if (paymentInfo.body.status === 'approved') {
-            // Insertar la orden solo si el estado es 'approved'
-            const orden = {
-                userId: external_reference,
-                items: paymentInfo.body.additional_info.items,
-                total: paymentInfo.body.transaction_details.total_paid_amount,
-                estado: 'success',
-                createdAt: new Date()
-            };
-
-            const ordersCollection = db.collection('ordenes');
-            await ordersCollection.insertOne(orden);
-            console.log('Orden insertada con éxito');
+                await ordersCollection.insertOne(orden);
+                console.log('Orden insertada con éxito:', orden);
+            }
         }
 
-        res.redirect('/carrito?status=success');
+        res.sendStatus(200);
     } catch (error) {
-        console.error('Error handling success:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Error en el webhook:', error);
+        res.sendStatus(500);
     }
 };
 
 export {
     createOrder,
-    handleSuccess
+    handleWebhook
 };
