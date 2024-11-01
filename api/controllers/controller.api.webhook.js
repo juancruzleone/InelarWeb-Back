@@ -19,8 +19,6 @@ const handleWebhook = async (req, res) => {
 
             const paymentData = response.data;
 
-            console.log('Datos del pago recibidos:', paymentData);
-
             // Verificamos si el estado del pago es "approved"
             if (paymentData.status === "approved") {
                 const orden = {
@@ -35,18 +33,12 @@ const handleWebhook = async (req, res) => {
                     createdAt: new Date(),
                 };
 
-                console.log('Intentando insertar orden aprobada en la base de datos:', orden);
+                console.log('Insertando orden aprobada en la base de datos:', orden);
 
                 const ordersCollection = db.collection('ordenes');
-                const result = await ordersCollection.insertOne(orden);
+                await ordersCollection.insertOne(orden);
 
-                console.log('Resultado de la inserción:', result);
-
-                if (result.acknowledged) {
-                    console.log('Orden insertada exitosamente en la base de datos.');
-                } else {
-                    console.error('Error al insertar la orden en la base de datos.');
-                }
+                console.log('Orden insertada exitosamente en la base de datos.');
             } else {
                 console.log(`El estado de pago recibido no es "approved": ${paymentData.status}`);
             }
