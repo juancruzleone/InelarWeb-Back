@@ -34,7 +34,7 @@ const createOrder = async (req, res) => {
 
         res.status(200).json(result);
     } catch (error) {
-        console.error('Error creating preference:', error);
+        console.error('Error al crear la preferencia de pago:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -65,16 +65,20 @@ const handleOrderStatus = async (req, res) => {
                         paymentId: payment_id
                     };
 
-                    await ordersCollection.insertOne(orden);
-                    console.log('Orden insertada con éxito:', orden);
+                    try {
+                        await ordersCollection.insertOne(orden);
+                        console.log('Orden insertada con éxito:', orden);
+                    } catch (dbError) {
+                        console.error('Error al insertar la orden en la base de datos:', dbError);
+                    }
                 } else {
                     console.log('La orden ya existe en la base de datos. No se insertará duplicado.');
                 }
             } else {
                 console.log('El estado del pago no es aprobado. No se insertará la orden.');
             }
-        } catch (error) {
-            console.error('Error al procesar el pago exitoso:', error);
+        } catch (paymentError) {
+            console.error('Error al verificar el pago en MercadoPago:', paymentError);
         }
     } else {
         console.log('El status no es "success" o falta el payment_id. No se procesará la orden.');
@@ -106,8 +110,12 @@ const webhookListener = async (req, res) => {
                     paymentId: payment.body.id
                 };
 
-                await ordersCollection.insertOne(orden);
-                console.log('Orden insertada con éxito desde el webhook:', orden);
+                try {
+                    await ordersCollection.insertOne(orden);
+                    console.log('Orden insertada con éxito desde el webhook:', orden);
+                } catch (dbError) {
+                    console.error('Error al insertar la orden desde el webhook en la base de datos:', dbError);
+                }
             } else {
                 console.log('El estado del pago en webhook no es aprobado. No se insertará la orden.');
             }
@@ -116,8 +124,8 @@ const webhookListener = async (req, res) => {
         }
 
         res.sendStatus(200);
-    } catch (error) {
-        console.error('Error en el webhook:', error);
+    } catch (webhookError) {
+        console.error('Error en el webhook:', webhookError);
         res.sendStatus(500);
     }
 };
