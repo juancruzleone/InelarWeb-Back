@@ -1,4 +1,3 @@
-
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { db } from '../../db.js';
 
@@ -23,25 +22,28 @@ const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "http://localhost:3000/carrito?status=success",
-                failure: "http://localhost:3000/carrito?status=failure",
-                pending: "http://localhost:3000/carrito?status=pending"
+                success: "https://inelar.vercel.app/carrito?status=success",
+                failure: "https://inelar.vercel.app/carrito?status=failure",
+                pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved"
         };
 
         const result = await preference.create({ body: preferenceBody });
 
-        const orden = {
-            userId, 
-            items: carrito,
-            total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-            estado: result.status,
-            createdAt: new Date()
-        };
+        // Verificar si el pago fue exitoso
+        if (result.status === 'approved' || result.status === 'success') {
+            const orden = {
+                userId,
+                items: carrito,
+                total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
+                estado: result.status,
+                createdAt: new Date()
+            };
 
-        const ordersCollection = db.collection('ordenes');
-        await ordersCollection.insertOne(orden);
+            const ordersCollection = db.collection('ordenes');
+            await ordersCollection.insertOne(orden);
+        }
 
         res.status(200).json(result);
     } catch (error) {
@@ -53,4 +55,3 @@ const createOrder = async (req, res) => {
 export {
     createOrder
 };
-
