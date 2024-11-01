@@ -1,15 +1,12 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { db } from '../../db.js';
 
+const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+
 const createOrder = async (req, res) => {
     try {
-        const { carrito, estado, userId } = req.body;
+        const { carrito, userId } = req.body;
 
-        if (estado === 'aprobado') {
-            return res.status(400).json({ error: 'Ya se ha aprobado una orden.' });
-        }
-
-        const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
 
         const items = carrito.map(producto => ({
@@ -26,56 +23,50 @@ const createOrder = async (req, res) => {
                 failure: "https://inelar.vercel.app/carrito?status=failure",
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
-            auto_return: "approved",
-            external_reference: userId, // Guardamos el userId como referencia
-            notification_url: "https://inelarweb-back.onrender.com/api/webhook"
+            notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook",
+            external_reference: userId,
+            auto_return: "approved"
         };
 
         const result = await preference.create({ body: preferenceBody });
+
         res.status(200).json(result);
     } catch (error) {
-        console.error('Error creating preference:', error);
+        console.error('Error creating order:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
-const handlePaymentSuccess = async (req, res) => {
+const handlePaymentNotification = async (req, res) => {
     try {
-        const { payment_id, status, external_reference } = req.query;
+        const { data } = req.body;
         
-        if (status === 'approved') {
-            // Obtener información del pago desde MercadoPago
-            const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-            const payment = await mercadoPago.payment.get(payment_id);
-            
-            // Crear la orden en MongoDB
-            const orden = {
-                userId: external_reference,
-                payment_id,
-                merchant_order_id: payment.merchant_order_id,
-                items: payment.additional_info.items,
-                total: payment.transaction_amount,
-                estado: 'aprobado',
-                createdAt: new Date()
-            };
+        if (data.type === "payment") {
+            const paymentId = data.id;
+            const payment = await mercadoPago.payment.findById(paymentId);
 
-            const ordersCollection = db.collection('ordenes');
-            await ordersCollection.insertOne(orden);
+            if (payment.status === 'approved') {
+                const orden = {
+                    userId: payment.external_reference,
+                    items: payment.additional_info.items,
+                    total: payment.transaction_amount,
+                    estado: 'aprobado',
+                    createdAt: new Date()
+                };
+
+                const ordersCollection = db.collection('ordenes');
+                await ordersCollection.insertOne(orden);
+            }
         }
 
-        res.redirect('https://inelar.vercel.app/carrito?status=success');
+        res.sendStatus(200);
     } catch (error) {
-        console.error('Error handling payment success:', error);
-        res.redirect('https://inelar.vercel.app/carrito?status=error');
+        console.error('Error handling payment notification:', error);
+        res.status(500).json({ error: error.message });
     }
 };
 
-const handlePaymentFailure = async (req, res) => {
-    res.redirect('https://inelar.vercel.app/carrito?status=failure');
+export {
+    createOrder,
+    handlePaymentNotification
 };
-
-const handlePaymentPending = async (req, res) => {
-    res.redirect('https://inelar.vercel.app/carrito?status=pending');
-};
-
-export { createOrder, handlePaymentSuccess, handlePaymentFailure, handlePaymentPending };
