@@ -1,12 +1,15 @@
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
 
+
 const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+
 
 const createOrder = async (req, res) => {
     try {
         const { carrito, userId } = req.body;
         const preference = new Preference(mercadoPago);
+
 
         const items = carrito.map(producto => ({
             title: producto.nombre,
@@ -15,6 +18,7 @@ const createOrder = async (req, res) => {
             quantity: producto.unidades,
             id: userId // Añadimos el userId a cada ítem
         }));
+
 
         const preferenceBody = {
             items,
@@ -27,7 +31,9 @@ const createOrder = async (req, res) => {
             notification_url: "https://inelarweb-back.onrender.com/api/webhook"
         };
 
+
         const result = await preference.create({ body: preferenceBody });
+
 
         // Creamos la orden en la base de datos
         const orden = {
@@ -37,6 +43,7 @@ const createOrder = async (req, res) => {
             estado: 'pending',
             createdAt: new Date()
         };
+
 
         const ordersCollection = db.collection('ordenes');
         await ordersCollection.insertOne(orden);
@@ -48,9 +55,11 @@ const createOrder = async (req, res) => {
     }
 };
 
+
 const handleWebhook = async (req, res) => {
     try {
         const { type, data } = req.body;
+
 
         if (type === 'payment') {
             const paymentApi = new Payment(mercadoPago);
@@ -61,11 +70,12 @@ const handleWebhook = async (req, res) => {
                
                 const userId = paymentInfo.additional_info.items[0].id; // Obtenemos el userId del primer ítem
 
+
                 // Actualizamos la orden existente
                 await ordersCollection.updateOne(
                     { userId: userId, estado: 'pending' },
-                    { 
-                        $set: { 
+                    {
+                        $set: {
                             estado: 'approved',
                             total: paymentInfo.transaction_amount,
                             updatedAt: new Date()
@@ -73,9 +83,11 @@ const handleWebhook = async (req, res) => {
                     }
                 );
 
+
                 console.log('Orden actualizada con éxito para el usuario:', userId);
             }
         }
+
 
         res.sendStatus(200);
     } catch (error) {
@@ -84,7 +96,9 @@ const handleWebhook = async (req, res) => {
     }
 };
 
+
 export {
     createOrder,
     handleWebhook
 };
+
