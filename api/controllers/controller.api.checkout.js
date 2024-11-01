@@ -23,7 +23,8 @@ const createOrder = async (req, res) => {
                 failure: "https://inelar.vercel.app/carrito?status=failure",
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
-            auto_return: "approved"
+            auto_return: "approved",
+            notification_url: "https://tudominio.com/api/checkout/webhook" // Asegúrate de usar tu dominio aquí
         };
 
         const result = await preference.create({ body: preferenceBody });
