@@ -1,8 +1,6 @@
-// controller.api.checkout.js
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
 
-// Initialize MercadoPago globally
 const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
 const createOrder = async (req, res) => {
@@ -25,7 +23,7 @@ const createOrder = async (req, res) => {
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved",
-            notification_url: "https://inelarweb-back.onrender.com/api/webhook"  
+            notification_url: "https://inelarweb-back.onrender.com/api/webhook"
         };
 
         const result = await preference.create({ body: preferenceBody });
@@ -42,21 +40,26 @@ const handleWebhook = async (req, res) => {
         const { type, data } = req.body;
 
         if (type === 'payment') {
-            const paymentInfo = await mercadoPago.payment.findById(data.id); // Now accessible
+            const paymentApi = new Payment(mercadoPago);
+            const paymentInfo = await paymentApi.get({ id: data.id });
             
             if (paymentInfo.status === 'approved') {
-                const { userId, carrito } = req.body; 
-
+                const ordersCollection = db.collection('ordenes');
+                
                 const orden = {
-                    userId,
-                    items: carrito,
-                    total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
+                    userId: paymentInfo.additional_info.items[0].id, // Asumiendo que el userId está en el primer ítem
+                    items: paymentInfo.additional_info.items.map(item => ({
+                        nombre: item.title,
+                        precio: item.unit_price,
+                        unidades: item.quantity
+                    })),
+                    total: paymentInfo.transaction_amount,
                     estado: 'approved',
                     createdAt: new Date()
                 };
 
-                const ordersCollection = db.collection('ordenes');
                 await ordersCollection.insertOne(orden);
+                console.log('Orden insertada con éxito:', orden);
             }
         }
 
