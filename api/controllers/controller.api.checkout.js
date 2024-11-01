@@ -1,13 +1,10 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { db } from '../../db.js';
 
 const createOrder = async (req, res) => {
     try {
-        const { carrito, estado, userId } = req.body;
+        const { carrito } = req.body;
 
-        if (estado === 'aprobado') {
-            return res.status(400).json({ error: 'Ya se ha aprobado una orden.' });
-        }
+        console.log('Creando preferencia de pago para el carrito:', carrito);
 
         const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
@@ -31,23 +28,11 @@ const createOrder = async (req, res) => {
 
         const result = await preference.create({ body: preferenceBody });
 
-        // Verificar si el pago fue exitoso
-        if (result.status === 'approved' || result.status === 'success') {
-            const orden = {
-                userId,
-                items: carrito,
-                total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-                estado: result.status,
-                createdAt: new Date()
-            };
-
-            const ordersCollection = db.collection('ordenes');
-            await ordersCollection.insertOne(orden);
-        }
+        console.log('Preferencia creada exitosamente:', result);
 
         res.status(200).json(result);
     } catch (error) {
-        console.error('Error creating preference:', error);
+        console.error('Error al crear la preferencia:', error);
         res.status(500).json({ error: error.message });
     }
 };
