@@ -1,18 +1,15 @@
 import { Router } from 'express';
-import { createOrder, handleWebhook, handleSuccess } from '../controllers/controller.api.checkout.js';
+import { createOrder } from '../controllers/controller.api.checkout.js';
 
 const router = Router();
 
 router.post('/create-order', createOrder);
-router.get('/success', handleSuccess);
-router.get('/failure', (req, res) => {
-    console.log('Pago fallido:', req.query);
-    res.redirect('https://inelar.vercel.app/carrito?status=failure');
+router.get('/success', (req, res) => res.send('Success'));
+router.get('/failure', (req, res) => res.send('Failure'));
+router.get('/pending', (req, res) => res.send('Pending'));
+router.post('/webhook', (req, res) => {
+    console.log('Webhook received:', req.body);
+    res.sendStatus(200);
 });
-router.get('/pending', (req, res) => {
-    console.log('Pago pendiente:', req.query);
-    res.redirect('https://inelar.vercel.app/carrito?status=pending');
-});
-router.post('/webhook', handleWebhook);
 
 export default router;
