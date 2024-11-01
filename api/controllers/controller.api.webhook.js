@@ -1,29 +1,47 @@
 import { db } from '../../db.js';
+import axios from 'axios';
 
 const handleWebhook = async (req, res) => {
     try {
         console.log('Webhook recibido:', req.body);
 
-        // Extraer información del pago y verificar que esté "approved"
         const { action, data } = req.body;
 
-        if (action === "payment" && data.status === "approved") {
-            const orden = {
-                userId: data.userId,
-                items: data.items,
-                total: data.items.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
-                estado: "approved",
-                createdAt: new Date(),
-            };
+        if (action === "payment") {
+            const paymentId = data.id;
 
-            console.log('Insertando orden aprobada en la base de datos:', orden);
+            // Consultamos la API de Mercado Pago para obtener el estado y los detalles del pago
+            const response = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+                headers: {
+                    Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`
+                }
+            });
 
-            const ordersCollection = db.collection('ordenes');
-            await ordersCollection.insertOne(orden);
+            const paymentData = response.data;
 
-            console.log('Orden insertada exitosamente en la base de datos.');
-        } else {
-            console.log(`El estado de pago recibido no es "approved": ${data.status}`);
+            // Verificamos si el estado del pago es "approved"
+            if (paymentData.status === "approved") {
+                const orden = {
+                    userId: paymentData.payer.id || null,
+                    items: paymentData.additional_info.items.map(item => ({
+                        nombre: item.title,
+                        precio: item.unit_price,
+                        unidades: item.quantity
+                    })),
+                    total: paymentData.transaction_amount,
+                    estado: "approved",
+                    createdAt: new Date(),
+                };
+
+                console.log('Insertando orden aprobada en la base de datos:', orden);
+
+                const ordersCollection = db.collection('ordenes');
+                await ordersCollection.insertOne(orden);
+
+                console.log('Orden insertada exitosamente en la base de datos.');
+            } else {
+                console.log(`El estado de pago recibido no es "approved": ${paymentData.status}`);
+            }
         }
 
         res.sendStatus(200);
