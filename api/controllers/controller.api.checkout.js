@@ -1,12 +1,11 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { db } from '../../db.js';
 
-const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-
 const createOrder = async (req, res) => {
     try {
         const { carrito, userId } = req.body;
 
+        const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
         const preference = new Preference(mercadoPago);
 
         const items = carrito.map(producto => ({
@@ -23,50 +22,48 @@ const createOrder = async (req, res) => {
                 failure: "https://inelar.vercel.app/carrito?status=failure",
                 pending: "https://inelar.vercel.app/carrito?status=pending"
             },
-            notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook",
-            external_reference: userId,
             auto_return: "approved"
         };
 
         const result = await preference.create({ body: preferenceBody });
-
         res.status(200).json(result);
     } catch (error) {
-        console.error('Error creating order:', error);
+        console.error('Error creating preference:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
-const handlePaymentNotification = async (req, res) => {
+const handleWebhook = async (req, res) => {
     try {
-        const { data } = req.body;
-        
-        if (data.type === "payment") {
-            const paymentId = data.id;
-            const payment = await mercadoPago.payment.findById(paymentId);
+        const { type, data } = req.body;
 
-            if (payment.status === 'approved') {
+        if (type === 'payment') {
+            const paymentId = data.id;
+            const paymentInfo = await mercadoPago.payment.findById(paymentId);
+
+            if (paymentInfo.body.status === 'approved') {
                 const orden = {
-                    userId: payment.external_reference,
-                    items: payment.additional_info.items,
-                    total: payment.transaction_amount,
-                    estado: 'aprobado',
+                    userId: paymentInfo.body.external_reference,
+                    items: paymentInfo.body.additional_info.items,
+                    total: paymentInfo.body.transaction_details.total_paid_amount,
+                    estado: 'success',
                     createdAt: new Date()
                 };
 
                 const ordersCollection = db.collection('ordenes');
                 await ordersCollection.insertOne(orden);
+                console.log('Orden insertada con éxito');
             }
         }
 
         res.sendStatus(200);
     } catch (error) {
-        console.error('Error handling payment notification:', error);
+        console.error('Error handling webhook:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
 export {
     createOrder,
-    handlePaymentNotification
+    handleWebhook
 };
