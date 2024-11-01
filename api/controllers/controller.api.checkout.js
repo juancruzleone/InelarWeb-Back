@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { db } from '../../db.js';
 
 const createOrder = async (req, res) => {
@@ -18,13 +18,12 @@ const createOrder = async (req, res) => {
         const preferenceBody = {
             items,
             back_urls: {
-                success: "https://inelarweb-back.onrender.com/api/checkout/success",
-                failure: "https://inelarweb-back.onrender.com/api/checkout/failure",
-                pending: "https://inelarweb-back.onrender.com/api/checkout/pending"
+                success: "https://inelar.vercel.app/carrito?status=success",
+                failure: "https://inelar.vercel.app/carrito?status=failure",
+                pending: "https://inelar.vercel.app/carrito?status=pending"
             },
             auto_return: "approved",
-            external_reference: userId,
-            notification_url: "https://inelarweb-back.onrender.com/api/checkout/webhook"
+            external_reference: userId // Usamos esto para identificar al usuario
         };
 
         const result = await preference.create({ body: preferenceBody });
@@ -36,74 +35,39 @@ const createOrder = async (req, res) => {
     }
 };
 
-const handleWebhook = async (req, res) => {
-    console.log('Webhook received:', req.body);
-    try {
-        const { type, data } = req.body;
-        
-        if (type === "payment") {
-            const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-            const paymentClient = new Payment(mercadoPago);
-            const payment = await paymentClient.get({ id: data.id });
-            
-            console.log('Payment data:', payment);
+const handleOrderStatus = async (req, res) => {
+    const { status, payment_id, external_reference } = req.query;
 
-            if (payment.status === 'approved') {
-                await createOrderInDatabase(payment);
-            } else {
-                console.log('Pago no aprobado. Estado:', payment.status);
-            }
-        } else {
-            console.log('Evento no relevante:', type);
-        }
-
-        res.sendStatus(200);
-    } catch (error) {
-        console.error('Error en el webhook:', error);
-        res.sendStatus(500);
-    }
-};
-
-const handleSuccess = async (req, res) => {
-    const { payment_id, status, external_reference } = req.query;
-    
-    if (status === 'approved') {
+    if (status === 'success' && payment_id) {
         try {
             const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
-            const paymentClient = new Payment(mercadoPago);
-            const payment = await paymentClient.get({ id: payment_id });
+            const payment = await mercadoPago.payment.get({ id: payment_id });
 
-            await createOrderInDatabase(payment);
+            if (payment.status === 'approved') {
+                const ordersCollection = db.collection('ordenes');
+                
+                const orden = {
+                    userId: external_reference,
+                    items: payment.additional_info.items,
+                    total: payment.transaction_amount,
+                    estado: 'aprobado',
+                    createdAt: new Date(),
+                    paymentId: payment_id
+                };
 
-            res.redirect(`https://inelar.vercel.app/carrito?status=success&orderId=${payment.id}`);
+                await ordersCollection.insertOne(orden);
+                console.log('Orden insertada con éxito:', orden);
+            }
         } catch (error) {
-            console.error('Error processing success payment:', error);
-            res.redirect('https://inelar.vercel.app/carrito?status=error');
+            console.error('Error al procesar el pago exitoso:', error);
         }
-    } else {
-        res.redirect('https://inelar.vercel.app/carrito?status=not_approved');
     }
-};
 
-const createOrderInDatabase = async (payment) => {
-    const userId = payment.external_reference;
-    const ordersCollection = db.collection('ordenes');
-    
-    const orden = {
-        userId, 
-        items: payment.additional_info.items,
-        total: payment.transaction_amount,
-        estado: 'aprobado',
-        createdAt: new Date(),
-        paymentId: payment.id
-    };
-
-    const result = await ordersCollection.insertOne(orden);
-    console.log('Orden insertada con éxito:', result);
+    // Redirigir al usuario de vuelta a la página del carrito
+    res.redirect(`https://inelar.vercel.app/carrito?status=${status}`);
 };
 
 export {
     createOrder,
-    handleWebhook,
-    handleSuccess
+    handleOrderStatus
 };
