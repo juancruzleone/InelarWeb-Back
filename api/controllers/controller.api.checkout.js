@@ -1,5 +1,6 @@
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { db } from '../../db.js';
+import { ObjectId } from 'mongodb';
 
 const mercadoPago = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
@@ -30,7 +31,7 @@ const createOrder = async (req, res) => {
        
         res.status(200).json(result);
     } catch (error) {
-        console.error('Error creating preference:', error);
+        console.error('Error al crear la preferencia:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -54,7 +55,8 @@ const handleWebhook = async (req, res) => {
                         unidades: item.quantity
                     })),
                     total: paymentInfo.transaction_amount,
-                    estado: 'approved',
+                    estado: 'no realizado', // Estado inicial
+                    estadoPago: 'approved',
                     createdAt: new Date()
                 };
 
@@ -65,12 +67,39 @@ const handleWebhook = async (req, res) => {
 
         res.sendStatus(200);
     } catch (error) {
-        console.error('Error in webhook handler:', error);
+        console.error('Error en el manejador del webhook:', error);
         res.sendStatus(500);
+    }
+};
+
+const changeOrderStatus = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { nuevoEstado } = req.body;
+
+        if (!['no realizado', 'realizado'].includes(nuevoEstado)) {
+            return res.status(400).json({ error: 'Estado no válido' });
+        }
+
+        const ordersCollection = db.collection('ordenes');
+        const result = await ordersCollection.updateOne(
+            { _id: new ObjectId(orderId) },
+            { $set: { estado: nuevoEstado } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        res.status(200).json({ message: 'Estado de la orden actualizado con éxito' });
+    } catch (error) {
+        console.error('Error al cambiar el estado de la orden:', error);
+        res.status(500).json({ error: error.message });
     }
 };
 
 export {
     createOrder,
-    handleWebhook
+    handleWebhook,
+    changeOrderStatus
 };
