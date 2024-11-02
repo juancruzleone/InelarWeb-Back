@@ -75,16 +75,16 @@ const handleWebhook = async (req, res) => {
 const changeOrderStatus = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { nuevoEstado } = req.body;
+        const { estado } = req.body; // Cambiado de nuevoEstado a estado
 
-        if (!['no enviado', 'enviado'].includes(nuevoEstado)) {
+        if (!['no enviado', 'enviado'].includes(estado)) {
             return res.status(400).json({ error: 'Estado no válido' });
         }
 
         const ordersCollection = db.collection('ordenes');
         const result = await ordersCollection.updateOne(
             { _id: new ObjectId(orderId) },
-            { $set: { estado: nuevoEstado } }
+            { $set: { estado: estado } }
         );
 
         if (result.matchedCount === 0) {
