@@ -13,7 +13,8 @@ const createOrder = async (req, res) => {
             title: producto.nombre,
             unit_price: parseFloat(producto.precio),
             currency_id: "ARS",
-            quantity: producto.unidades
+            quantity: producto.unidades,
+            id: userId // Añadimos el userId como id del primer ítem
         }));
 
         const preferenceBody = {
@@ -48,7 +49,7 @@ const handleWebhook = async (req, res) => {
                 const ordersCollection = db.collection('ordenes');
                
                 const orden = {
-                    userId: paymentInfo.additional_info.items[0].id, // Asumiendo que el userId está en el primer ítem
+                    userId: paymentInfo.additional_info.items[0].id, // Obtenemos el userId del primer ítem
                     items: paymentInfo.additional_info.items.map(item => ({
                         nombre: item.title,
                         precio: item.unit_price,
