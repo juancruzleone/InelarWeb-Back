@@ -56,7 +56,7 @@ const handleWebhook = async (req, res) => {
                         unidades: item.quantity
                     })),
                     total: paymentInfo.transaction_amount,
-                    estado: 'no realizado', // Estado inicial
+                    estado: 'no enviado', // Estado inicial cambiado a 'no enviado'
                     createdAt: new Date()
                 };
 
@@ -77,7 +77,7 @@ const changeOrderStatus = async (req, res) => {
         const { orderId } = req.params;
         const { nuevoEstado } = req.body;
 
-        if (!['no realizado', 'realizado'].includes(nuevoEstado)) {
+        if (!['no enviado', 'enviado'].includes(nuevoEstado)) {
             return res.status(400).json({ error: 'Estado no válido' });
         }
 
