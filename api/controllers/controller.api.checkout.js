@@ -28,6 +28,18 @@ const createOrder = async (req, res) => {
         };
 
         const result = await preference.create({ body: preferenceBody });
+
+        // Crear y guardar la orden en la base de datos
+        const orden = {
+            userId, 
+            items: carrito,
+            total: carrito.reduce((acc, producto) => acc + producto.precio * producto.unidades, 0),
+            estado: 'no realizado', // Estado inicial
+            createdAt: new Date()
+        };
+
+        const ordersCollection = db.collection('ordenes');
+        await ordersCollection.insertOne(orden);
        
         res.status(200).json(result);
     } catch (error) {
@@ -47,20 +59,17 @@ const handleWebhook = async (req, res) => {
             if (paymentInfo.status === 'approved') {
                 const ordersCollection = db.collection('ordenes');
                
-                const orden = {
-                    userId: paymentInfo.additional_info.items[0].id, // Asumiendo que el userId está en el primer ítem
-                    items: paymentInfo.additional_info.items.map(item => ({
-                        nombre: item.title,
-                        precio: item.unit_price,
-                        unidades: item.quantity
-                    })),
-                    total: paymentInfo.transaction_amount,
-                    estado: 'no realizado', // Estado inicial
-                    createdAt: new Date()
-                };
-
-                await ordersCollection.insertOne(orden);
-                console.log('Orden insertada con éxito:', orden);
+                // Actualizar la orden existente en lugar de crear una nueva
+                await ordersCollection.updateOne(
+                    { userId: paymentInfo.additional_info.items[0].id },
+                    { 
+                        $set: { 
+                            estado: 'realizado',
+                            total: paymentInfo.transaction_amount
+                        }
+                    }
+                );
+                console.log('Orden actualizada con éxito');
             }
         }
 
