@@ -56,7 +56,6 @@ const handleWebhook = async (req, res) => {
                     })),
                     total: paymentInfo.transaction_amount,
                     estado: 'no realizado', // Estado inicial
-                    estadoPago: 'approved',
                     createdAt: new Date()
                 };
 
