@@ -50,7 +50,7 @@ async function verifyAccount(token) {
   await cuentaCollection.insertOne(nuevaCuenta);
   await verificationTokensCollection.deleteOne({ _id: verificationData._id });
 
-  return "Cuenta verificada exitosamente";
+  return "Cuenta verificada exitosamente. Inicie sesión en la web";
 }
 
 async function login(cuenta) {
