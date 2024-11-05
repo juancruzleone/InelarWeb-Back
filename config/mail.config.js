@@ -11,7 +11,6 @@ const createTransporter = () => {
 };
 
 async function sendVerificationEmail(to, token) {
-  // Usamos la ruta del backend para la verificación
   const verificationLink = `${process.env.BACKEND_URL}/api/auth/verify/${token}`;
   
   let transporter = createTransporter();

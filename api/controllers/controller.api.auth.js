@@ -15,7 +15,8 @@ async function verifyAccount(req, res) {
   const { token } = req.params;
   try {
     const result = await services.verifyAccount(token);
-    res.status(200).json(result);
+    res.set('Content-Type', 'text/plain');
+    res.status(200).send(result);
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }

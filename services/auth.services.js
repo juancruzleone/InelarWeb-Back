@@ -21,8 +21,7 @@ async function createAccount(cuenta) {
     email: cuenta.email,
     token: verificationToken,
     userName: cuenta.userName,
-    password: cuenta.password, // Guardamos la contraseña sin hash para el inicio de sesión automático
-    hashedPassword, // Guardamos también la contraseña hasheada
+    hashedPassword,
     createdAt: new Date()
   });
 
@@ -51,11 +50,7 @@ async function verifyAccount(token) {
   await cuentaCollection.insertOne(nuevaCuenta);
   await verificationTokensCollection.deleteOne({ _id: verificationData._id });
 
-  return { 
-    message: "Cuenta verificada correctamente. Iniciando sesión...",
-    userName: verificationData.userName,
-    password: verificationData.password // Devolvemos la contraseña sin hash para el inicio de sesión automático
-  };
+  return "Cuenta verificada exitosamente";
 }
 
 async function login(cuenta) {
