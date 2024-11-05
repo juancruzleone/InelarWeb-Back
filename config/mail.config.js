@@ -11,7 +11,8 @@ const createTransporter = () => {
 };
 
 async function sendVerificationEmail(to, token) {
-  const verificationLink = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
+  // Cambia esta línea para usar FRONTEND_URL
+  const verificationLink = `${process.env.FRONTEND_URL}/verifyEmail?token=${token}`;
   
   let transporter = createTransporter();
   

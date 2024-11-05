@@ -21,7 +21,8 @@ async function createAccount(cuenta) {
     email: cuenta.email,
     token: verificationToken,
     userName: cuenta.userName,
-    password: hashedPassword,
+    password: cuenta.password, // Guardamos la contraseña sin hash para el inicio de sesión automático
+    hashedPassword, // Guardamos también la contraseña hasheada
     createdAt: new Date()
   });
 
@@ -41,7 +42,7 @@ async function verifyAccount(token) {
   const nuevaCuenta = {
     userName: verificationData.userName,
     email: verificationData.email,
-    password: verificationData.password,
+    password: verificationData.hashedPassword,
     isVerified: true,
     status: 'active',
     createdAt: new Date()
@@ -51,9 +52,9 @@ async function verifyAccount(token) {
   await verificationTokensCollection.deleteOne({ _id: verificationData._id });
 
   return { 
-    message: "Cuenta verificada correctamente. Ya puedes iniciar sesión.",
+    message: "Cuenta verificada correctamente. Iniciando sesión...",
     userName: verificationData.userName,
-    password: verificationData.password
+    password: verificationData.password // Devolvemos la contraseña sin hash para el inicio de sesión automático
   };
 }
 
@@ -76,9 +77,7 @@ async function getAllAccounts() {
 }
 
 async function getAccountById(id) {
-  const cuenta = await cuentaCollection.findOne({ _id: new ObjectId(id) 
-
- });
+  const cuenta = await cuentaCollection.findOne({ _id: new ObjectId(id) });
   return cuenta ? { ...cuenta, password: undefined } : null;
 }
 
