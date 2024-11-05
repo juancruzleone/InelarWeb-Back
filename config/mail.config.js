@@ -11,8 +11,8 @@ const createTransporter = () => {
 };
 
 async function sendVerificationEmail(to, token) {
-  // Cambia esta línea para usar FRONTEND_URL
-  const verificationLink = `${process.env.FRONTEND_URL}/verifyEmail?token=${token}`;
+  // Usamos la ruta del backend para la verificación
+  const verificationLink = `${process.env.BACKEND_URL}/api/auth/verify/${token}`;
   
   let transporter = createTransporter();
   
@@ -21,7 +21,10 @@ async function sendVerificationEmail(to, token) {
       from: process.env.EMAIL_USER,
       to,
       subject: "Verificación de cuenta",
-      html: `<p>Haz clic en el siguiente enlace para verificar tu cuenta:</p><a href="${verificationLink}">Verificar cuenta</a>`,
+      html: `
+        <p>Haz clic en el siguiente enlace para verificar tu cuenta:</p>
+        <a href="${verificationLink}">Verificar cuenta</a>
+      `,
     });
     console.log("Correo de verificación enviado con éxito");
   } catch (error) {
