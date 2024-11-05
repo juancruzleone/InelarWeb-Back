@@ -50,7 +50,11 @@ async function verifyAccount(token) {
   await cuentaCollection.insertOne(nuevaCuenta);
   await verificationTokensCollection.deleteOne({ _id: verificationData._id });
 
-  return { message: "Cuenta verificada correctamente. Ya puedes iniciar sesión." };
+  return { 
+    message: "Cuenta verificada correctamente. Ya puedes iniciar sesión.",
+    userName: verificationData.userName,
+    password: verificationData.password
+  };
 }
 
 async function login(cuenta) {
@@ -72,7 +76,9 @@ async function getAllAccounts() {
 }
 
 async function getAccountById(id) {
-  const cuenta = await cuentaCollection.findOne({ _id: new ObjectId(id) });
+  const cuenta = await cuentaCollection.findOne({ _id: new ObjectId(id) 
+
+ });
   return cuenta ? { ...cuenta, password: undefined } : null;
 }
 
