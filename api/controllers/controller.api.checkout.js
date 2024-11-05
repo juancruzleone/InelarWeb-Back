@@ -47,16 +47,24 @@ const handleWebhook = async (req, res) => {
            
             if (paymentInfo.status === 'approved') {
                 const ordersCollection = db.collection('ordenes');
+                const usersCollection = db.collection('cuentas');
                
+                const userId = paymentInfo.additional_info.items[0].id;
+                
+                // Obtener el email del usuario
+                const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+                const userEmail = user ? user.email : 'Email no disponible';
+
                 const orden = {
-                    userId: paymentInfo.additional_info.items[0].id, // Obtenemos el userId del primer ítem
+                    userId: userId,
+                    email: userEmail, // Añadimos el email del usuario a la orden
                     items: paymentInfo.additional_info.items.map(item => ({
                         nombre: item.title,
                         precio: item.unit_price,
                         unidades: item.quantity
                     })),
                     total: paymentInfo.transaction_amount,
-                    estado: 'no enviado', // Estado inicial cambiado a 'no enviado'
+                    estado: 'no enviado',
                     createdAt: new Date()
                 };
 
@@ -75,7 +83,7 @@ const handleWebhook = async (req, res) => {
 const changeOrderStatus = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { estado } = req.body; // Cambiado de nuevoEstado a estado
+        const { estado } = req.body;
 
         if (!['no enviado', 'enviado'].includes(estado)) {
             return res.status(400).json({ error: 'Estado no válido' });
