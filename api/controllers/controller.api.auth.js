@@ -15,13 +15,8 @@ async function verifyAccount(req, res) {
   const { token } = req.params;
   try {
     const result = await services.verifyAccount(token);
-    if (result.verified) {
-      const loginResult = await services.login({ userName: result.userName, password: result.password });
-      const authToken = await tokenService.createToken(loginResult);
-      res.status(200).json({ message: "Cuenta verificada e iniciada sesión exitosamente", token: authToken });
-    } else {
-      res.status(400).json({ error: { message: "No se pudo verificar la cuenta" } });
-    }
+    res.set('Content-Type', 'text/plain');
+    res.status(200).send(result);
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }
