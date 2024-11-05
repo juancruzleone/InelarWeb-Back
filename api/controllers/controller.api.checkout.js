@@ -51,13 +51,15 @@ const handleWebhook = async (req, res) => {
                
                 const userId = paymentInfo.additional_info.items[0].id;
                 
-                // Obtener el email del usuario
+                // Obtener el email y userName del usuario
                 const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
                 const userEmail = user ? user.email : 'Email no disponible';
+                const userName = user ? user.userName : 'Usuario no disponible';
 
                 const orden = {
                     userId: userId,
-                    email: userEmail, // Añadimos el email del usuario a la orden
+                    email: userEmail,
+                    userName: userName, // Añadimos el userName del usuario a la orden
                     items: paymentInfo.additional_info.items.map(item => ({
                         nombre: item.title,
                         precio: item.unit_price,
