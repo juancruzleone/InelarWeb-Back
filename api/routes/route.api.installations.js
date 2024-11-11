@@ -16,4 +16,8 @@ route.post('/instalaciones/:id/dispositivos', [validateToken, isAdmin, validateD
 route.put('/instalaciones/:id/dispositivos/:deviceId', [validateToken, isAdmin, validateDevice], controllers.updateDeviceInInstallation);
 route.delete('/instalaciones/:id/dispositivos/:deviceId', [validateToken, isAdmin], controllers.deleteDeviceFromInstallation);
 
+route.post('/instalaciones/:installationId/dispositivos/:deviceId/mantenimiento', [validateToken], controllers.handleMaintenanceSubmission);
+route.get('/instalaciones/:installationId/dispositivos/:deviceId/ultimo-mantenimiento', [validateToken], controllers.getLastMaintenanceForDevice);
+route.get('/instalaciones/:installationId/dispositivos/:deviceId/formulario', controllers.getDeviceForm);
+
 export default route;

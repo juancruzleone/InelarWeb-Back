@@ -11,11 +11,14 @@ import ApiAuthRoutes from '../api/routes/route.api.auth.js';
 import cors from 'cors';
 import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
 const app = express();
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -23,12 +26,11 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-
 app.use(express.urlencoded({ extended: true }));
 app.use("/", express.static("public"));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json());
 app.use(cors());
-
 
 app.use('/api', ApiProductsRoutes);
 app.use('/api', ApiClientsRoutes);
@@ -40,6 +42,8 @@ app.use('/api', ApiProfileRoutes);
 app.use('/api', ApiInstallationsRoutes);
 app.use('/api', ApiAuthRoutes);
 
-app.listen(2023, () => {
-  console.log("Servidor escuchando en el puerto 2023");
+const PORT = process.env.PORT || 2023;
+
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });

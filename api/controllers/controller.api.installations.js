@@ -22,17 +22,10 @@ async function createInstallation(req, res) {
       installationType,
     });
     
-    if (newInstallation.googleDriveFolderId) {
-      res.status(201).json({ 
-        message: 'Instalación creada correctamente y carpeta de Google Drive creada', 
-        installation: newInstallation,
-      });
-    } else {
-      res.status(201).json({ 
-        message: 'Instalación creada correctamente, pero no se pudo crear la carpeta de Google Drive', 
-        installation: newInstallation,
-      });
-    }
+    res.status(201).json({ 
+      message: 'Instalación creada correctamente', 
+      installation: newInstallation,
+    });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }
@@ -110,13 +103,50 @@ async function getDevicesFromInstallation(req, res) {
   }
 }
 
+async function handleMaintenanceSubmission(req, res) {
+  try {
+    const { installationId, deviceId } = req.params;
+    const formResponses = req.body;
+    const result = await services.handleMaintenanceSubmission(installationId, deviceId, formResponses);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('Error al procesar la respuesta del formulario:', err);
+    res.status(400).json({ error: { message: err.message } });
+  }
+}
+
+async function getLastMaintenanceForDevice(req, res) {
+  try {
+    const { installationId, deviceId } = req.params;
+    const lastMaintenance = await services.getLastMaintenanceForDevice(installationId, deviceId);
+    res.status(200).json(lastMaintenance);
+  } catch (err) {
+    console.error('Error al obtener el último mantenimiento:', err);
+    res.status(400).json({ error: { message: err.message } });
+  }
+}
+
+async function getDeviceForm(req, res) {
+  try {
+    const { installationId, deviceId } = req.params;
+    const formData = await services.getDeviceForm(installationId, deviceId);
+    res.status(200).json(formData);
+  } catch (err) {
+    console.error('Error al obtener el formulario del dispositivo:', err);
+    res.status(400).json({ error: { message: err.message } });
+  }
+}
+
 export { 
   getInstallations, 
   createInstallation, 
-  updateInstallation, 
-  deleteInstallation, 
-  addDeviceToInstallation, 
-  updateDeviceInInstallation, 
+  updateInstallation,
+  deleteInstallation,
+  addDeviceToInstallation,
+  updateDeviceInInstallation,
   deleteDeviceFromInstallation,
   getDevicesFromInstallation,
+  handleMaintenanceSubmission,
+  getLastMaintenanceForDevice,
+  getDeviceForm
 };

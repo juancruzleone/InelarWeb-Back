@@ -1,6 +1,9 @@
 import { db } from '../db.js';
 import { ObjectId } from 'mongodb';
-import { createForm, createFolder, updateFolder, deleteFolder } from './googleAppsScript.service.js';
+import { generatePDF } from './pdfGenerator.services.js';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 
 const installationsCollection = db.collection('instalaciones');
 
@@ -25,23 +28,6 @@ async function createInstallation(installationData) {
 
   const result = await installationsCollection.insertOne(newInstallation);
   const insertedId = result.insertedId.toString();
-
-  const folderName = `${company} - ${address} - ${installationType}`;
-
-  try {
-    const folderResult = await createFolder(insertedId, folderName);
-    if (folderResult.success) {
-      newInstallation.googleDriveFolderId = folderResult.folderId;
-      await installationsCollection.updateOne(
-        { _id: result.insertedId },
-        { $set: { googleDriveFolderId: folderResult.folderId } }
-      );
-    } else {
-      console.error('No se pudo crear la carpeta en Google Drive:', folderResult.error);
-    }
-  } catch (error) {
-    console.error('Error al crear la carpeta en Google Drive:', error);
-  }
 
   return { ...newInstallation, _id: insertedId };
 }
@@ -73,32 +59,13 @@ async function deleteInstallation(id) {
 
   const objectId = new ObjectId(id);
   
-  const installation = await installationsCollection.findOne({ _id: objectId });
-  
-  if (!installation) {
-    throw new Error('La instalación no existe');
-  }
-
-  if (installation.googleDriveFolderId) {
-    try {
-      const folderDeleteResult = await deleteFolder(installation.googleDriveFolderId);
-      if (!folderDeleteResult.success) {
-        console.error('Error al eliminar la carpeta en Google Drive:', folderDeleteResult.error);
-        throw new Error('No se pudo eliminar la carpeta de la instalación en Google Drive');
-      }
-    } catch (error) {
-      console.error('Error al intentar eliminar la carpeta en Google Drive:', error);
-      throw new Error('Error al eliminar la carpeta de la instalación en Google Drive');
-    }
-  }
-
   const result = await installationsCollection.deleteOne({ _id: objectId });
 
   if (result.deletedCount === 0) {
     throw new Error('No se pudo eliminar la instalación');
   }
 
-  return { message: 'Instalación y su carpeta asociada eliminadas correctamente' };
+  return { message: 'Instalación eliminada correctamente' };
 }
 
 async function addDeviceToInstallation(installationId, deviceData) {
@@ -115,40 +82,17 @@ async function addDeviceToInstallation(installationId, deviceData) {
   }
 
   const deviceId = new ObjectId();
- 
-  let deviceFolderId;
-  try {
-    const folderResult = await createFolder(installation.googleDriveFolderId, null, { nombre, ubicacion, categoria });
-    if (folderResult.success) {
-      deviceFolderId = folderResult.folderId;
-    } else {
-      console.error('No se pudo crear la carpeta del dispositivo en Google Drive:', folderResult.error);
-    }
-  } catch (error) {
-    console.error('Error al crear la carpeta del dispositivo en Google Drive:', error);
-  }
 
-  let codigoQR, formId;
-  try {
-    const formResult = await createForm(categoria, deviceId.toString(), nombre, ubicacion, deviceFolderId);
-    if (formResult.success) {
-      codigoQR = formResult.url;
-      formId = formResult.id;
-    } else {
-      console.error('No se pudo crear el formulario de Google:', formResult.error);
-    }
-  } catch (error) {
-    console.error('Error al crear el formulario de Google:', error);
-  }
+  // Generar URL para el formulario, asegurándose de que no haya doble slash
+  const formUrl = `${process.env.FRONTEND_URL.replace(/\/$/, '')}/formulario/${installationId}/${deviceId}`;
 
   const newDevice = {
     _id: deviceId,
     nombre,
     ubicacion,
     categoria,
-    googleDriveFolderId: deviceFolderId || null,
-    codigoQR: codigoQR || null,
-    formId: formId || null,
+    codigoQR: formUrl,
+    maintenanceHistory: []
   };
 
   const result = await installationsCollection.updateOne(
@@ -174,28 +118,26 @@ async function updateDeviceInInstallation(installationId, deviceId, updatedDevic
   const installationObjectId = new ObjectId(installationId);
   const deviceObjectId = new ObjectId(deviceId);
 
-  const installation = await installationsCollection.findOne(
+  // Asegurarse de que codigoQR se mantenga
+  const currentDevice = await installationsCollection.findOne(
     { _id: installationObjectId, "devices._id": deviceObjectId },
     { projection: { "devices.$": 1 } }
   );
 
-  if (!installation || !installation.devices || installation.devices.length === 0) {
-    throw new Error('No se encontró la instalación o el dispositivo');
+  if (!currentDevice || !currentDevice.devices || currentDevice.devices.length === 0) {
+    throw new Error('No se encontró el dispositivo');
   }
 
-  const currentDevice = installation.devices[0];
-
-  if (currentDevice.googleDriveFolderId) {
-    const newFolderName = `${updatedDeviceData.nombre} - ${updatedDeviceData.ubicacion} - ${updatedDeviceData.categoria}`;
-    const folderUpdateResult = await updateFolder(currentDevice.googleDriveFolderId, newFolderName);
-    if (!folderUpdateResult.success) {
-      console.error('Error al actualizar la carpeta en Google Drive:', folderUpdateResult.error);
-    }
-  }
+  const updatedDevice = {
+    ...currentDevice.devices[0],
+    ...updatedDeviceData,
+    _id: deviceObjectId,
+    codigoQR: currentDevice.devices[0].codigoQR
+  };
 
   const result = await installationsCollection.updateOne(
     { _id: installationObjectId, "devices._id": deviceObjectId },
-    { $set: { "devices.$": { ...currentDevice, ...updatedDeviceData, _id: deviceObjectId } } }
+    { $set: { "devices.$": updatedDevice } }
   );
 
   if (result.matchedCount === 0) {
@@ -206,7 +148,7 @@ async function updateDeviceInInstallation(installationId, deviceId, updatedDevic
     throw new Error('No se realizaron cambios en el dispositivo');
   }
 
-  return { message: 'Dispositivo actualizado correctamente' };
+  return { message: 'Dispositivo actualizado correctamente', device: updatedDevice };
 }
 
 async function deleteDeviceFromInstallation(installationId, deviceId) {
@@ -216,35 +158,6 @@ async function deleteDeviceFromInstallation(installationId, deviceId) {
 
   const installationObjectId = new ObjectId(installationId);
   const deviceObjectId = new ObjectId(deviceId);
-
-  const installation = await installationsCollection.findOne(
-    { _id: installationObjectId, "devices._id": deviceObjectId },
-    { projection: { "devices.$": 1 } }
-  );
-
-  if (!installation || !installation.devices || installation.devices.length === 0) {
-    throw new Error('No se encontró la instalación o el dispositivo');
-  }
-
-  const deviceToDelete = installation.devices[0];
-
-  let folderDeleteResult = { success: true, message: 'No se encontró carpeta de Google Drive para eliminar' };
-  if (deviceToDelete.googleDriveFolderId) {
-    try {
-      folderDeleteResult = await deleteFolder(deviceToDelete.googleDriveFolderId);
-      console.log('Resultado de la eliminación de la carpeta:', folderDeleteResult);
-      if (!folderDeleteResult.success) {
-        console.error('Error al eliminar la carpeta en Google Drive:', folderDeleteResult.error);
-      } else {
-        console.log(`Carpeta de Google Drive eliminada: ${deviceToDelete.googleDriveFolderId}`);
-      }
-    } catch (error) {
-      console.error('Error al intentar  eliminar la carpeta en Google Drive:', error);
-      folderDeleteResult = { success: false, error: error.message };
-    }
-  } else {
-    console.log('El dispositivo no tiene una carpeta de Google Drive asociada');
-  }
 
   const result = await installationsCollection.updateOne(
     { _id: installationObjectId },
@@ -259,12 +172,7 @@ async function deleteDeviceFromInstallation(installationId, deviceId) {
     throw new Error('No se encontró el dispositivo en la instalación');
   }
 
-  return { 
-    message: folderDeleteResult.success 
-      ? `Dispositivo eliminado correctamente. ${folderDeleteResult.message}`
-      : `Dispositivo eliminado correctamente, pero hubo un problema con la carpeta de Google Drive: ${folderDeleteResult.error}`,
-    device: deviceToDelete
-  };
+  return { message: 'Dispositivo eliminado correctamente' };
 }
 
 async function getDevicesFromInstallation(installationId) {
@@ -283,13 +191,141 @@ async function getDevicesFromInstallation(installationId) {
   return installation.devices ? installation.devices.sort((a, b) => b._id.getTimestamp() - a._id.getTimestamp()) : [];
 }
 
-export { 
-  getInstallations, 
-  createInstallation, 
-  updateInstallation, 
-  deleteInstallation, 
-  addDeviceToInstallation, 
-  updateDeviceInInstallation, 
-  deleteDeviceFromInstallation, 
-  getDevicesFromInstallation 
+async function handleMaintenanceSubmission(installationId, deviceId, formResponses) {
+  if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
+    throw new Error('El ID de la instalación o el dispositivo no es válido');
+  }
+
+  const installationObjectId = new ObjectId(installationId);
+  const deviceObjectId = new ObjectId(deviceId);
+
+  const installation = await installationsCollection.findOne(
+    { _id: installationObjectId, "devices._id": deviceObjectId },
+    { projection: { "devices.$": 1 } }
+  );
+
+  if (!installation || !installation.devices || installation.devices.length === 0) {
+    throw new Error('No se encontró la instalación o el dispositivo');
+  }
+
+  const device = installation.devices[0];
+
+  const pdfBuffer = await generatePDF(formResponses, device);
+  const pdfFileName = `maintenance_${deviceId}_${Date.now()}.pdf`;
+  
+  // Usar el directorio temporal del sistema para almacenar los PDFs
+  const pdfPath = path.join(os.tmpdir(), pdfFileName);
+  
+  await fs.writeFile(pdfPath, pdfBuffer);
+
+  const maintenanceRecord = {
+    date: new Date(),
+    responses: formResponses,
+    pdfUrl: `${process.env.BACKEND_URL.replace(/\/$/, '')}/temp/${pdfFileName}`
+  };
+
+  const result = await installationsCollection.updateOne(
+    { _id: installationObjectId, "devices._id": deviceObjectId },
+    { 
+      $push: { "devices.$.maintenanceHistory": maintenanceRecord }
+    }
+  );
+
+  if (result.modifiedCount === 0) {
+    throw new Error('No se pudo registrar el mantenimiento');
+  }
+
+  return { message: 'Mantenimiento registrado correctamente', maintenanceRecord };
+}
+
+async function getLastMaintenanceForDevice(installationId, deviceId) {
+  if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
+    throw new Error('El ID de la instalación o el dispositivo no es válido');
+  }
+
+  const installationObjectId = new ObjectId(installationId);
+  const deviceObjectId = new ObjectId(deviceId);
+
+  const result = await installationsCollection.findOne(
+    { _id: installationObjectId, "devices._id": deviceObjectId },
+    { projection: { "devices.$": 1 } }
+  );
+
+  if (!result || !result.devices || result.devices.length === 0) {
+    throw new Error('No se encontró la instalación o el dispositivo');
+  }
+
+  const device = result.devices[0];
+  const maintenanceHistory = device.maintenanceHistory || [];
+  return maintenanceHistory.length > 0 ? maintenanceHistory[maintenanceHistory.length - 1] : null;
+}
+
+async function getDeviceForm(installationId, deviceId) {
+  if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
+    throw new Error('El ID de la instalación o el dispositivo no es válido');
+  }
+
+  const installationObjectId = new ObjectId(installationId);
+  const deviceObjectId = new ObjectId(deviceId);
+
+  const result = await installationsCollection.findOne(
+    { _id: installationObjectId, "devices._id": deviceObjectId },
+    { projection: { "devices.$": 1 } }
+  );
+
+  if (!result || !result.devices || result.devices.length === 0) {
+    throw new Error('No se encontró la instalación o el dispositivo');
+  }
+
+  const device = result.devices[0];
+  
+  // Aquí definimos el formulario basado en la categoría del dispositivo
+  let formFields;
+  switch (device.categoria) {
+    case 'detector':
+      formFields = [
+        { name: 'estado', type: 'select', options: ['Operativo', 'No operativo'], label: 'Estado' },
+        { name: 'limpieza', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Limpieza' },
+        { name: 'prueba', type: 'select', options: ['Responde', 'No responde'], label: 'Prueba' },
+        { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+      ];
+      break;
+    case 'extintor':
+      formFields = [
+        { name: 'presion', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Presión' },
+        { name: 'manguera', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Estado de manguera' },
+        { name: 'precinto', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Precinto de seguridad' },
+        { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+      ];
+      break;
+    // Añadir más casos para otras categorías
+    default:
+      formFields = [
+        { name: 'estado', type: 'select', options: ['Operativo', 'No operativo'], label: 'Estado' },
+        { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+      ];
+  }
+
+  return {
+    deviceInfo: {
+      nombre: device.nombre,
+      ubicacion: device.ubicacion,
+      categoria: device.categoria
+    },
+    formFields
+  };
+}
+
+export {
+  getInstallations,
+  createInstallation,
+  updateInstallation,
+  deleteInstallation,
+  addDeviceToInstallation,
+  updateDeviceInInstallation,
+  deleteDeviceFromInstallation,
+  getDevicesFromInstallation,
+  handleMaintenanceSubmission,
+  getLastMaintenanceForDevice,
+  getDeviceForm
 };
