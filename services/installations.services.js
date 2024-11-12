@@ -127,6 +127,35 @@ async function handleMaintenanceSubmission(installationId, deviceId, formRespons
     throw new Error('No se encontró la instalación o el dispositivo');
   }
   const device = installation.devices[0];
+  
+  // Obtener los campos del formulario para este tipo de dispositivo
+  let formFields;
+  switch (device.categoria) {
+    case 'detector':
+      formFields = getDetectorFormFields();
+      break;
+    case 'extintor':
+      formFields = getExtintorFormFields();
+      break;
+    case 'manguera':
+      formFields = getMangueraFormFields();
+      break;
+    case 'central':
+      formFields = getCentralFormFields();
+      break;
+    default:
+      formFields = getDefaultFormFields();
+  }
+  
+  // Verificar si todos los campos requeridos están llenos
+  const missingFields = formFields
+    .filter(field => field.required && !formResponses[field.name])
+    .map(field => field.label);
+  
+  if (missingFields.length > 0) {
+    throw new Error(`Los siguientes campos son obligatorios: ${missingFields.join(', ')}`);
+  }
+  
   const pdfBuffer = await generatePDF(formResponses, device);
   
   if (!pdfBuffer || pdfBuffer.length === 0) {
@@ -219,7 +248,7 @@ function getDetectorFormFields() {
     { name: 'libre', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Libre', required: true },
     { name: 'limpieza', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Limpieza', required: true },
     { name: 'prueba', type: 'select', options: ['Responde', 'No responde'], label: 'Prueba', required: true },
-    { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+    { name: 'observaciones', type: 'textarea', label: 'Observaciones', required: false }
   ];
 }
 
@@ -234,7 +263,7 @@ function getExtintorFormFields() {
     { name: 'selloGarantia', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Sello de garantía', required: true },
     { name: 'calcosIdentificacion', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Calcos de identificación', required: true },
     { name: 'senalizacion', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Señalización', required: true },
-    { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+    { name: 'observaciones', type: 'textarea', label: 'Observaciones', required: false }
   ];
 }
 
@@ -260,7 +289,7 @@ function getMangueraFormFields() {
     { name: 'pruebaBoquilla', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Prueba boquilla paso de chorro a niebla', required: true },
     { name: 'verificacionRosca', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Verificación de rosca', required: true },
     { name: 'accionamientoValvula', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Accionamiento de válvula', required: true },
-    { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+    { name: 'observaciones', type: 'textarea', label: 'Observaciones', required: false }
   ];
 }
 
@@ -293,14 +322,14 @@ function getCentralFormFields() {
     { name: 'pruebaDesconexionManual', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Prueba del sistema de desconexión manual de extinción', required: true },
     { name: 'controlVisualCabezalDisparo', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Control visual del cabezal de disparo eléctrico de extinción', required: true },
     { name: 'controlPesoCilindros', type: 'select', options: ['Cumple', 'No cumple', 'No aplica'], label: 'Control de peso de cilindro/s de extinción', required: true },
-    { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+    { name: 'observaciones', type: 'textarea', label: 'Observaciones', required: false }
   ];
 }
 
 function getDefaultFormFields() {
   return [
     { name: 'estado', type: 'select', options: ['Operativo', 'No operativo'], label: 'Estado', required: true },
-    { name: 'observaciones', type: 'textarea', label: 'Observaciones' }
+    { name: 'observaciones', type: 'textarea', label: 'Observaciones', required: false }
   ];
 }
 
