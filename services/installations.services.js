@@ -197,6 +197,21 @@ async function getLastMaintenanceForDevice(installationId, deviceId) {
   return device.maintenanceHistory[device.maintenanceHistory.length - 1];
 }
 
+async function getDevicesFromInstallation(installationId) {
+  if (!ObjectId.isValid(installationId)) {
+    throw new Error('El ID de la instalación no es válido');
+  }
+  const installationObjectId = new ObjectId(installationId);
+  const installation = await installationsCollection.findOne(
+    { _id: installationObjectId },
+    { projection: { devices: 1 } }
+  );
+  if (!installation) {
+    throw new Error('No se encontró la instalación');
+  }
+  return installation.devices || [];
+}
+
 function getDetectorFormFields() {
   return [
     { name: 'tipoDetector', type: 'select', options: ['Humo convencional', 'Humo inteligente', 'Temperatura convencional', 'Temperatura inteligente', 'Gas', 'Llama', 'Barrera de detección de humo'], label: 'Tipo de detector', required: true },
@@ -297,5 +312,6 @@ export {
   addDeviceToInstallation,
   getDeviceForm,
   handleMaintenanceSubmission,
-  getLastMaintenanceForDevice
+  getLastMaintenanceForDevice,
+  getDevicesFromInstallation
 };
