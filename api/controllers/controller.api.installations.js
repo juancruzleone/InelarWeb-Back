@@ -13,19 +13,9 @@ async function createInstallation(req, res) {
   try {
     const { company, address, floorSector, postalCode, city, province, installationType } = req.body;
     const newInstallation = await services.createInstallation({
-      company,
-      address,
-      floorSector,
-      postalCode,
-      city,
-      province,
-      installationType,
+      company, address, floorSector, postalCode, city, province, installationType,
     });
-    
-    res.status(201).json({ 
-      message: 'Instalación creada correctamente', 
-      installation: newInstallation,
-    });
+    res.status(201).json({ message: 'Instalación creada correctamente', installation: newInstallation });
   } catch (err) {
     res.status(400).json({ error: { message: err.message } });
   }
@@ -36,13 +26,7 @@ async function updateInstallation(req, res) {
     const { id } = req.params;
     const { company, address, floorSector, postalCode, city, province, installationType } = req.body;
     const updatedInstallation = await services.updateInstallation(id, {
-      company,
-      address,
-      floorSector,
-      postalCode,
-      city,
-      province,
-      installationType,
+      company, address, floorSector, postalCode, city, province, installationType,
     });
     res.status(200).json({ message: 'Instalación actualizada correctamente', installation: updatedInstallation });
   } catch (err) {
@@ -137,9 +121,9 @@ async function getDeviceForm(req, res) {
   }
 }
 
-export { 
-  getInstallations, 
-  createInstallation, 
+export {
+  getInstallations,
+  createInstallation,
   updateInstallation,
   deleteInstallation,
   addDeviceToInstallation,
