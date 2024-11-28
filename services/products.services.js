@@ -23,7 +23,7 @@ async function getProducts(filter = {}) {
     }
 
     return productsCollection.find(filterMongo)
-        .sort({ _id: -1 })  // Sort by _id in descending order
+        .sort({ _id: -1 })  
         .toArray();
 }
 

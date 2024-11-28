@@ -128,7 +128,7 @@ async function handleMaintenanceSubmission(installationId, deviceId, formRespons
   }
   const device = installation.devices[0];
   
-  // Obtener los campos del formulario para este tipo de dispositivo
+  
   let formFields;
   switch (device.categoria) {
     case 'detector':
