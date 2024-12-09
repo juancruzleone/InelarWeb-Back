@@ -134,3 +134,4 @@ export {
   getLastMaintenanceForDevice,
   getDeviceForm
 };
+

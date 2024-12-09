@@ -70,6 +70,38 @@ async function addDeviceToInstallation(installationId, deviceData) {
   return { message: 'Dispositivo agregado correctamente', device: newDevice };
 }
 
+async function updateDeviceInInstallation(installationId, deviceId, deviceData) {
+  if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
+    throw new Error('El ID de la instalación o el dispositivo no es válido');
+  }
+  const installationObjectId = new ObjectId(installationId);
+  const deviceObjectId = new ObjectId(deviceId);
+  const result = await installationsCollection.updateOne(
+    { _id: installationObjectId, "devices._id": deviceObjectId },
+    { $set: { "devices.$": { ...deviceData, _id: deviceObjectId } } }
+  );
+  if (result.modifiedCount === 0) {
+    throw new Error('No se pudo actualizar el dispositivo en la instalación');
+  }
+  return { message: 'Dispositivo actualizado correctamente' };
+}
+
+async function deleteDeviceFromInstallation(installationId, deviceId) {
+  if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
+    throw new Error('El ID de la instalación o el dispositivo no es válido');
+  }
+  const installationObjectId = new ObjectId(installationId);
+  const deviceObjectId = new ObjectId(deviceId);
+  const result = await installationsCollection.updateOne(
+    { _id: installationObjectId },
+    { $pull: { devices: { _id: deviceObjectId } } }
+  );
+  if (result.modifiedCount === 0) {
+    throw new Error('No se pudo eliminar el dispositivo de la instalación');
+  }
+  return { message: 'Dispositivo eliminado correctamente' };
+}
+
 async function getDeviceForm(installationId, deviceId) {
   if (!ObjectId.isValid(installationId) || !ObjectId.isValid(deviceId)) {
     throw new Error('El ID de la instalación o el dispositivo no es válido');
@@ -127,7 +159,6 @@ async function handleMaintenanceSubmission(installationId, deviceId, formRespons
     throw new Error('No se encontró la instalación o el dispositivo');
   }
   const device = installation.devices[0];
-  
   
   let formFields;
   switch (device.categoria) {
@@ -339,8 +370,11 @@ export {
   updateInstallation,
   deleteInstallation,
   addDeviceToInstallation,
+  updateDeviceInInstallation,
+  deleteDeviceFromInstallation,
   getDeviceForm,
   handleMaintenanceSubmission,
   getLastMaintenanceForDevice,
   getDevicesFromInstallation
 };
+
